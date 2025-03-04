@@ -13,6 +13,11 @@ This notebook will cover the variance study of the dimensions of the Pioneering 
 
 Ships come in all shapes and size's. Some are small, some are large and some are absolutely ridiculously large. Enter the Pioneering Spirit. With it's 1,000,000 m^3 maximum displacement, the vessel can be considered the largest vessel in the world based on displaced water. While this vessel boasts many remarkable features, one cant help but notice the massive missing chunch from the bow of the vessel; the slot. 
 
+![](https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/5e0a23cb8579561da9db78cd721f6f718f46b1e5/Images/PS_slot.png)
+
+
+
+see image
 
 """
 
