@@ -1,0 +1,10 @@
+name = "NumericalShipHydro"
+uuid = "ceb80a28-d60b-4c49-86c4-24861104d1ed"
+authors = ["Gabriel Weymouth"]
+version = "0.1.0"
+
+[deps]
+Pluto = "c3e4b0f8-55cb-11ea-2926-15256bba5781"
+
+[compat]
+julia = "1"
