@@ -10,27 +10,48 @@ begin
 	
 	md"""
 	## Methodology
-	In order to perform a variance study, the hull form of the Pioneering Spirit needs to be described parametrically. This has been acchieved by defining the hull in Rhino, using a Grasshopper script. The combined use of grasshopper and Rhino allows for rapid definition of multiple hulls based on the geometric parameters that are to be varied for the purpose of this study. These hullforms can then be exported as NURBS data, which can be used as input for the potential flow solver. (This way of working has been validated as a potential flow assignment last year, REF Rajan). The figure below provides an overview of the Rhino-Grasshopper hull definition.
+	In order to perform a variance study, the hull form of the Pioneering Spirit needs to be described parametrically. This has been acchieved by defining the hull in Rhino, using a Grasshopper script. The combined use of grasshopper and Rhino allows for rapid definition of multiple hulls based on the geometric parameters that are to be varied for the purpose of this study. These hullforms are then be exported as NURBS data, which is used as input for the potential flow solver. (This way of working has been validated as a potential flow assignment last year, REF Rajan). The figure below provides an overview of the Rhino-Grasshopper hull definition.
 	
 	![]
 	(https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/a01588220c1a78ce20eb21a81b061a234e023fbe/Images/Rhino_grasshopper.png)
 	
 	For the purpose of this study, the following geometric parameters will be varied (see image below for parameter clarification):
 	
-	 > 1. **Slot width**
-	 > 2. **Slot length**
+	 > 1. **Slot width** 
+	 > 2. **Slot length** 
 	 > 3. **Vessel width**
 	 > 4. **Horizonal bow radius**
 	 > 5. **Vertical bow radius**
 	 > 6. **Outer bilge keel**
 	 > 7. **Inner bilge keel**
 
+	**     Top view          Side view          Front view**
+	
 	![]
 	(https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/refs/heads/main/Images/Dimensions.png)
 
-	**ONDERSTAANDE NOG FF NETJES OPSCHRIJVEN**
+	The variance study will be performed by implementing the following steps:
 
-	Dan nog iets over zelfde snelheid profiel, golfhoogte vergelijken. Voor elke parameter krijgen we dan een verloop en golfhoogte voor paramter range, alle parameters worden procentueel ten opzichte van de werkelijkheid gevarieerd (-50%, 50%). Door het procentueel te doen houden we de impact op elke parameter zo constant als mogelijk. (We stoppen bij 50 aangezien we een grens moeten trekken (schip moet wel funtionaliteit blijven behouden, dus bijv een -100% slot groote slaat in de werkelijkheid nergens op)). Dit resulteerd in een variantie van golfhoogte, waarbij de parameters op impact kunnen worden gerangschikt aan de hand van hun variantie (nog ff verder uitzoeken of dit de standaard is bij statistische studies). 
+	1. **Assess the importance of total vessel length** 
+	While the total vessel length is not a parameter that will be varried for the actual study, this step aims to reduce the total computation time. The hypothesis is that the wave height in the slot will not vary significantly if the total vessel size is reduced from 382m. While this step is likely introduce a slight modelling error, reducing the total vessel size will reduce the total computation time.
+	
+	 2. **Determine the speed range and the parameter variance range for all variables** 
+	Depending on the final vessel length, the speed range for the varience study is to be determined. This speed range is to be set to froude number 0 through 1 accroding to $\text{Fn} = \frac{v}{\sqrt{g * l}}$.
+
+	Furthermore, the range over which the geometric parameters (outlined above) are to be varried. The aim for these ranges is to vary the geometric parameters 50% above and below their real world value. The reasoning for this range is that the variance of the geometric parameters should be limited, as extreme variance in values are likely to intoduce trucation errors. (i.e. a bilge radius of 0.01m will likely not provide reliable results.)
+
+	 3. **Compute the wave height for the full speed and parameter variance range**
+	This step entails the variance study itself, where the input paramters as determined above are to be entered into the solver.
+	
+	
+	 4. **Compute the varience in wave height caused by varying the geometric parameter**
+	In order to compare the impact of the different parameters, the varience in wave height caused by changing the geometric parameters is to be computed. 
+	
+	 5. **Rank the parameters based on descending varience in wave height**
+	Based on the varience in wave height as computed above, the parameters can be ranked accoring to which parameter has the biggest influence on the wave making characteristic of the slot.
+
+	**@Albert, laat ff weten wat je vindt van de methode die ik heb verzonnen. Ben sws nog ff van plan om aan Gabe te vragen of we een wetenschappelijke onderbouwing nodig hebben voor onze statistische methodiek. Heb ff kort gezocht in statistiek boeken, maar dat is best een studie opzich, en wellicht buiten de scope van het vak.**
+	
 	"""
 end
 
@@ -97,6 +118,58 @@ From the plot you can see.....
 (Hopelijk die van kalea)
 """
 
+# ╔═╡ b00ddd51-7a31-4809-9830-05e76e2ff0f3
+begin
+	par_range(ref) = vcat([ref * (1 - p) for p in 0.1:0.1:0.5][end:-1:1], ref, [ref * (1 + p) for p in 0.1:0.1:0.5])
+	slot_width = par_range(59)		#echte waarde
+	slot_length = par_range(122)	#echte waarde	
+	vessel_width = par_range(124)	#echte waarde
+	hor_br = par_range(3)			#Niet publiek bekend, schatten met rhino
+	ver_br = par_range(5)			#Niet publiek bekend, schatten met rhino
+	out_bk = par_range(1)			#Niet publiek bekend, schatten met rhino
+	inn_bk = par_range(1)			#Niet publiek bekend, schatten met rhino
+end
+
+# ╔═╡ 00bf348b-9e12-4486-a772-3fe1c26234cd
+begin
+	using PrettyTables
+	
+	# Parameters and sources
+	parameters = ["Slot width", "Slot length", "Vessel width", "Horizontal bow radius", "Vertical bow radius", "Outer bilge keel", "Inner bilge keel"]
+	sources = ["Real world value", "Real world value", "Real world value", "Approximated", "Approximated", "Approximated", "Approximated"]
+	
+	# Generate arrays for each parameter
+	ranges = [slot_width, slot_length, vessel_width, hor_br, ver_br, out_bk, inn_bk]
+	
+	# Correcting the data structure
+	data = hcat(parameters, ranges, sources)  # `hcat` ensures a 2D matrix structure
+	
+	# Display the table
+	pretty_table(data, header=["Parameter", "Range", "Source"])
+end
+
+# ╔═╡ 39c8e8f6-6852-4f3e-84b3-72e8c4e3db11
+md"""
+## The study
+
+ 1. **The importance of total vessel length** 
+
+ 2. **Computing the speed range and the parameter variance range for all variables**
+The variance range for all parameters are displayed in the table below. Note that not for some parameters, the real world value is not known. These values have been visually approximated in Rhino, which is labled in the source column as "approximated".
+
+##TODO CHANGE TABLE FORMAT##
+"""
+
+# ╔═╡ 79d035b0-df28-4e7b-bba2-f484fd24e14c
+md"""
+ 3. **Computeing the wave height for the full speed and parameter variance range**
+
+ 4. **Computing the varience in wave height caused by varying the geometric parameter**
+
+ 5. **Rank the parameters based on descending varience in wave height**
+
+"""
+
 # ╔═╡ b0df71f8-b3a3-477a-b4aa-5702491840e1
 md"""
 ## Results
@@ -118,9 +191,11 @@ PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
 
 [compat]
 Plots = "~1.40.9"
+PrettyTables = "~2.4.0"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -129,7 +204,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.3"
 manifest_format = "2.0"
-project_hash = "27e72416827ed49b4b8faba0ebf86d57f97ef16c"
+project_hash = "7499b3dafa405affe984bd3552dc5f79806fc76c"
 
 [[deps.AliasTables]]
 deps = ["PtrArrays", "Random"]
@@ -232,6 +307,11 @@ git-tree-sha1 = "439e35b0b36e2e5881738abc8857bd92ad6ff9a8"
 uuid = "d38c429a-6771-53c6-b99e-75d170b6e991"
 version = "0.6.3"
 
+[[deps.Crayons]]
+git-tree-sha1 = "249fe38abf76d48563e2f4556bebd215aa317e15"
+uuid = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
+version = "4.1.1"
+
 [[deps.DataAPI]]
 git-tree-sha1 = "abe83f3a2f1b857aac70ef8b269080af17764bbe"
 uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
@@ -242,6 +322,11 @@ deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
 git-tree-sha1 = "1d0a14036acb104d9e89698bd408f63ab58cdc82"
 uuid = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 version = "0.18.20"
+
+[[deps.DataValueInterfaces]]
+git-tree-sha1 = "bfc1187b79289637fa0ef6d4436ebdfe6905cbd6"
+uuid = "e2d170a0-9d28-54be-80f0-106bbe20a464"
+version = "1.0.0"
 
 [[deps.Dates]]
 deps = ["Printf"]
@@ -396,6 +481,11 @@ version = "1.11.0"
 git-tree-sha1 = "e2222959fbc6c19554dc15174c81bf7bf3aa691c"
 uuid = "92d709cd-6900-40b7-9082-c6be49f344b6"
 version = "0.2.4"
+
+[[deps.IteratorInterfaceExtensions]]
+git-tree-sha1 = "a3f24677c21f5bbe9d2a714f95dcd58337fb2856"
+uuid = "82899510-4779-5014-852e-03e436cf321d"
+version = "1.0.0"
 
 [[deps.JLFzf]]
 deps = ["Pipe", "REPL", "Random", "fzf_jll"]
@@ -744,6 +834,12 @@ git-tree-sha1 = "9306f6085165d270f7e3db02af26a400d580f5c6"
 uuid = "21216c6a-2e73-6563-6e65-726566657250"
 version = "1.4.3"
 
+[[deps.PrettyTables]]
+deps = ["Crayons", "LaTeXStrings", "Markdown", "PrecompileTools", "Printf", "Reexport", "StringManipulation", "Tables"]
+git-tree-sha1 = "1101cd475833706e4d0e7b122218257178f48f34"
+uuid = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
+version = "2.4.0"
+
 [[deps.Printf]]
 deps = ["Unicode"]
 uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
@@ -885,6 +981,12 @@ git-tree-sha1 = "29321314c920c26684834965ec2ce0dacc9cf8e5"
 uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 version = "0.34.4"
 
+[[deps.StringManipulation]]
+deps = ["PrecompileTools"]
+git-tree-sha1 = "725421ae8e530ec29bcbdddbe91ff8053421d023"
+uuid = "892a3eda-7b42-436c-8928-eab12a02cf0e"
+version = "0.4.1"
+
 [[deps.StyledStrings]]
 uuid = "f489334b-da3d-4c2e-b8f0-e476e12c162b"
 version = "1.11.0"
@@ -898,6 +1000,18 @@ version = "7.7.0+0"
 deps = ["Dates"]
 uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 version = "1.0.3"
+
+[[deps.TableTraits]]
+deps = ["IteratorInterfaceExtensions"]
+git-tree-sha1 = "c06b2f539df1c6efa794486abfb6ed2022561a39"
+uuid = "3783bdb8-4a98-5b6b-af9a-565f29a5fe9c"
+version = "1.0.1"
+
+[[deps.Tables]]
+deps = ["DataAPI", "DataValueInterfaces", "IteratorInterfaceExtensions", "OrderedCollections", "TableTraits"]
+git-tree-sha1 = "598cd7c1f68d1e205689b1c2fe65a9f85846f297"
+uuid = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
+version = "1.12.0"
 
 [[deps.Tar]]
 deps = ["ArgTools", "SHA"]
@@ -1265,11 +1379,15 @@ version = "1.4.1+2"
 # ╔═╡ Cell order:
 # ╟─fa570bdd-3772-4750-980d-d75cf268ffcf
 # ╟─5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
-# ╠═c7786892-73cf-4e23-bfe6-339feae6f4de
+# ╟─c7786892-73cf-4e23-bfe6-339feae6f4de
 # ╟─9fef423f-6f85-48ab-86fa-7687af6ce184
 # ╟─1c89e4be-6cb6-4c0b-a3b4-b48e07617470
 # ╟─68af513d-c457-49f8-ba7c-d6ca7c142975
-# ╟─b0df71f8-b3a3-477a-b4aa-5702491840e1
+# ╟─b00ddd51-7a31-4809-9830-05e76e2ff0f3
+# ╟─39c8e8f6-6852-4f3e-84b3-72e8c4e3db11
+# ╟─00bf348b-9e12-4486-a772-3fe1c26234cd
+# ╟─79d035b0-df28-4e7b-bba2-f484fd24e14c
+# ╠═b0df71f8-b3a3-477a-b4aa-5702491840e1
 # ╟─4d344c68-f99a-4df5-be6f-cdf4cff29731
 # ╟─c2437329-a343-4909-af0a-55820fcce5b3
 # ╟─00000000-0000-0000-0000-000000000001
