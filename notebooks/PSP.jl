@@ -4,6 +4,36 @@
 using Markdown
 using InteractiveUtils
 
+# ╔═╡ c7786892-73cf-4e23-bfe6-339feae6f4de
+begin
+	using Markdown
+	
+	md"""
+	## Methodology
+	In order to perform a variance study, the hull form of the Pioneering Spirit needs to be described parametrically. This has been acchieved by defining the hull in Rhino, using a Grasshopper script. The combined use of grasshopper and Rhino allows for rapid definition of multiple hulls based on the geometric parameters that are to be varied for the purpose of this study. These hullforms can then be exported as NURBS data, which can be used as input for the potential flow solver. (This way of working has been validated as a potential flow assignment last year, REF Rajan). The figure below provides an overview of the Rhino-Grasshopper hull definition.
+	
+	![]
+	(https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/a01588220c1a78ce20eb21a81b061a234e023fbe/Images/Rhino_grasshopper.png)
+	
+	For the purpose of this study, the following geometric parameters will be varied (see image below for parameter clarification):
+	
+	 > 1. **Slot width**
+	 > 2. **Slot length**
+	 > 3. **Vessel width**
+	 > 4. **Horizonal bow radius**
+	 > 5. **Vertical bow radius**
+	 > 6. **Outer bilge keel**
+	 > 7. **Inner bilge keel**
+
+	![]
+	(https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/refs/heads/main/Images/Dimensions.png)
+
+	**ONDERSTAANDE NOG FF NETJES OPSCHRIJVEN**
+
+	Dan nog iets over zelfde snelheid profiel, golfhoogte vergelijken. Voor elke parameter krijgen we dan een verloop en golfhoogte voor paramter range, alle parameters worden procentueel ten opzichte van de werkelijkheid gevarieerd (-50%, 50%). Door het procentueel te doen houden we de impact op elke parameter zo constant als mogelijk. (We stoppen bij 50 aangezien we een grens moeten trekken (schip moet wel funtionaliteit blijven behouden, dus bijv een -100% slot groote slaat in de werkelijkheid nergens op)). Dit resulteerd in een variantie van golfhoogte, waarbij de parameters op impact kunnen worden gerangschikt aan de hand van hun variantie (nog ff verder uitzoeken of dit de standaard is bij statistische studies). 
+	"""
+end
+
 # ╔═╡ 1c89e4be-6cb6-4c0b-a3b4-b48e07617470
 begin
 	function wave_height_ana(t, omega=1, zeta_a=1)
@@ -35,14 +65,7 @@ md"""
 ## Research question
 
 
-This study will discuss the effect of the various geometries of the slot (i.e. slot width, slot length, PS/SB bow bilge keel, etc.) on the wave height that can be observed within the slot.
-
-nog ff netjes lijstje maken van wat we allemaal varieren
-"""
-
-# ╔═╡ c7786892-73cf-4e23-bfe6-339feae6f4de
-md"""
-## Methodology
+This study will discuss the effect of the various geometries of the slot on the wave height that can be observed within the slot created by a constant foreward velocity, with the aim of ranking the influence of the geometric parameters from a wave making point of view.
 """
 
 # ╔═╡ 9fef423f-6f85-48ab-86fa-7687af6ce184
@@ -93,6 +116,7 @@ end;
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
+Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 
 [compat]
@@ -105,7 +129,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.3"
 manifest_format = "2.0"
-project_hash = "433c825682ac2300f10e88ef6fc0d59d12a6d791"
+project_hash = "27e72416827ed49b4b8faba0ebf86d57f97ef16c"
 
 [[deps.AliasTables]]
 deps = ["PtrArrays", "Random"]
@@ -1240,8 +1264,8 @@ version = "1.4.1+2"
 
 # ╔═╡ Cell order:
 # ╟─fa570bdd-3772-4750-980d-d75cf268ffcf
-# ╠═5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
-# ╟─c7786892-73cf-4e23-bfe6-339feae6f4de
+# ╟─5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
+# ╠═c7786892-73cf-4e23-bfe6-339feae6f4de
 # ╟─9fef423f-6f85-48ab-86fa-7687af6ce184
 # ╟─1c89e4be-6cb6-4c0b-a3b4-b48e07617470
 # ╟─68af513d-c457-49f8-ba7c-d6ca7c142975
