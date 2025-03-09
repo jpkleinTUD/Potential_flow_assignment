@@ -28,7 +28,7 @@ begin
 	**     Top view          Side view          Front view**
 	
 	![]
-	(https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/refs/heads/main/Images/Dimensions.png)
+	(https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/refs/heads/main/Images/Dimensions_2.png)
 
 	The variance study will be performed by implementing the following steps:
 
@@ -81,6 +81,9 @@ After this introduction, the research question will be properly formulated. Next
 
 """
 
+# ╔═╡ 2adecdf9-45d8-4c18-8227-fb0a554ea3ca
+nothing
+
 # ╔═╡ 5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
 md"""
 ## Research question
@@ -88,6 +91,12 @@ md"""
 
 This study will discuss the effect of the various geometries of the slot on the wave height that can be observed within the slot created by foreward velocity, with the aim of ranking the influence of the geometric parameters from a wave making point of view.
 """
+
+# ╔═╡ 2a3461d3-c832-4064-b5e0-b1008b1a9cd4
+nothing
+
+# ╔═╡ ef64d57f-30e6-45dd-b598-65728d31b77b
+nothing
 
 # ╔═╡ 9fef423f-6f85-48ab-86fa-7687af6ce184
 md"""
@@ -128,42 +137,53 @@ begin
 	ver_br = par_range(5)			#Niet publiek bekend, schatten met rhino
 	out_bk = par_range(1)			#Niet publiek bekend, schatten met rhino
 	inn_bk = par_range(1)			#Niet publiek bekend, schatten met rhino
+
+	vessel_length = 382  #CHANGE DEPENDING ON STEP 1
+	compute_speeds(length; num_points=10) = round.(range(0, 1, length=num_points) .* sqrt(length * 9.81), digits=2)
+	speed_range = compute_speeds(vessel_length)
+	froude_range = round.(range(0, 1, length=10), digits=2)
 	
+	nothing
 end
 
-# ╔═╡ 00bf348b-9e12-4486-a772-3fe1c26234cd
+# ╔═╡ c45ce64f-2ae1-4120-adad-24c1f843498c
 begin
-	using PrettyTables
+	using DataFrames
+	value = ["Speed range [m/s]", "Froude number"]
 	
-	# Parameters and sources
-	parameters = ["Slot width", "Slot length", "Vessel width", "Horizontal bow radius", "Vertical bow radius", "Outer bilge keel", "Inner bilge keel"]
-	sources = ["Real world value", "Real world value", "Real world value", "Approximated", "Approximated", "Approximated", "Approximated"]
+	speed_ranges = [speed_range, froude_range]
 	
-	# Generate arrays for each parameter
-	ranges = [slot_width, slot_length, vessel_width, hor_br, ver_br, out_bk, inn_bk]
-	
-	# Correcting the data structure
-	data = hcat(parameters, ranges, sources)  # `hcat` ensures a 2D matrix structure
-	
-	# Display the table
-	pretty_table(data, header=["Parameter", "Range", "Source"])
+	df_speed = DataFrame(Value = value, Range = speed_ranges)
 end
 
-# ╔═╡ 39c8e8f6-6852-4f3e-84b3-72e8c4e3db11
+# ╔═╡ 073d70ef-da1e-47dd-b0e5-a532b936c883
 md"""
 ## The study
 
  1. **The importance of total vessel length** 
 
  2. **Computing the speed range and the parameter variance range for all variables**
-The variance range for all parameters are displayed in the table below. Note that not for some parameters, the real world value is not known. These values have been visually approximated in Rhino, which is labled in the source column as "approximated".
-
-##TODO CHANGE TABLE FORMAT##
+Based on the vessel length computed above, the speed range over which each hull geometry is to be evaluated becomes:
 """
+
+# ╔═╡ 39c8e8f6-6852-4f3e-84b3-72e8c4e3db11
+md"""
+Furthermore, the variance range for all parameters are displayed in the table below. For the all ranges, the middle parameter is equal to the real world value. Note that not for some parameters, the real world value is not known. These values have been visually approximated in Rhino, which is labled in the source column as "approximated".
+"""
+
+# ╔═╡ 00bf348b-9e12-4486-a772-3fe1c26234cd
+begin
+	parameters = ["Slot width", "Slot length", "Vessel width", "Horizontal bow radius", "Vertical bow radius", "Outer bilge keel", "Inner bilge keel"]
+	sources = ["Real world value", "Real world value", "Real world value", "Approximated", "Approximated", "Approximated", "Approximated"]
+	
+	ranges = [slot_width, slot_length, vessel_width, hor_br, ver_br, out_bk, inn_bk]
+	
+	df_geometry = DataFrame(Parameter = parameters, Range = ranges, Source = sources)
+end
 
 # ╔═╡ 79d035b0-df28-4e7b-bba2-f484fd24e14c
 md"""
- 3. **Computeing the wave height for the full speed and parameter variance range**
+ 3. **Computing the wave height for the full speed and parameter variance range**
 
  4. **Computing the varience in wave height caused by varying the geometric parameter**
 
@@ -171,10 +191,16 @@ md"""
 
 """
 
+# ╔═╡ 6a72863a-c5d6-46d3-b2ce-ffe420a49549
+nothing
+
 # ╔═╡ b0df71f8-b3a3-477a-b4aa-5702491840e1
 md"""
 ## Results
 """
+
+# ╔═╡ 0cbe5265-a2d2-45b6-bc8a-60173db020f0
+nothing
 
 # ╔═╡ 4d344c68-f99a-4df5-be6f-cdf4cff29731
 md"""
@@ -190,13 +216,13 @@ end;
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
 
 [compat]
+DataFrames = "~1.7.0"
 Plots = "~1.40.9"
-PrettyTables = "~2.4.0"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -205,7 +231,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.3"
 manifest_format = "2.0"
-project_hash = "7499b3dafa405affe984bd3552dc5f79806fc76c"
+project_hash = "31497811389f36a46b3f0ea2ddf39ebec2689be9"
 
 [[deps.AliasTables]]
 deps = ["PtrArrays", "Random"]
@@ -318,6 +344,12 @@ git-tree-sha1 = "abe83f3a2f1b857aac70ef8b269080af17764bbe"
 uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
 version = "1.16.0"
 
+[[deps.DataFrames]]
+deps = ["Compat", "DataAPI", "DataStructures", "Future", "InlineStrings", "InvertedIndices", "IteratorInterfaceExtensions", "LinearAlgebra", "Markdown", "Missings", "PooledArrays", "PrecompileTools", "PrettyTables", "Printf", "Random", "Reexport", "SentinelArrays", "SortingAlgorithms", "Statistics", "TableTraits", "Tables", "Unicode"]
+git-tree-sha1 = "fb61b4812c49343d7ef0b533ba982c46021938a6"
+uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+version = "1.7.0"
+
 [[deps.DataStructures]]
 deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
 git-tree-sha1 = "1d0a14036acb104d9e89698bd408f63ab58cdc82"
@@ -420,6 +452,11 @@ git-tree-sha1 = "846f7026a9decf3679419122b49f8a1fdb48d2d5"
 uuid = "559328eb-81f9-559d-9380-de523a88c83c"
 version = "1.0.16+0"
 
+[[deps.Future]]
+deps = ["Random"]
+uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
+version = "1.11.0"
+
 [[deps.GLFW_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libglvnd_jll", "Xorg_libXcursor_jll", "Xorg_libXi_jll", "Xorg_libXinerama_jll", "Xorg_libXrandr_jll", "libdecor_jll", "xkbcommon_jll"]
 git-tree-sha1 = "fcb0584ff34e25155876418979d4c8971243bb89"
@@ -473,10 +510,28 @@ git-tree-sha1 = "55c53be97790242c29031e5cd45e8ac296dadda3"
 uuid = "2e76f6c2-a576-52d4-95c1-20adfe4de566"
 version = "8.5.0+0"
 
+[[deps.InlineStrings]]
+git-tree-sha1 = "6a9fde685a7ac1eb3495f8e812c5a7c3711c2d5e"
+uuid = "842dd82b-1e85-43dc-bf29-5d0ee9dffc48"
+version = "1.4.3"
+
+    [deps.InlineStrings.extensions]
+    ArrowTypesExt = "ArrowTypes"
+    ParsersExt = "Parsers"
+
+    [deps.InlineStrings.weakdeps]
+    ArrowTypes = "31f734f8-188a-4ce0-8406-c8a06bd891cd"
+    Parsers = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
+
 [[deps.InteractiveUtils]]
 deps = ["Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 version = "1.11.0"
+
+[[deps.InvertedIndices]]
+git-tree-sha1 = "6da3c4316095de0f5ee2ebd875df8721e7e0bdbe"
+uuid = "41ab1584-1d38-5bbf-9106-f11c6c58b48f"
+version = "1.3.1"
 
 [[deps.IrrationalConstants]]
 git-tree-sha1 = "e2222959fbc6c19554dc15174c81bf7bf3aa691c"
@@ -823,6 +878,12 @@ version = "1.40.9"
     ImageInTerminal = "d8c32880-2388-543b-8c61-d9f865259254"
     Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
+[[deps.PooledArrays]]
+deps = ["DataAPI", "Future"]
+git-tree-sha1 = "36d8b4b899628fb92c2749eb488d884a926614d3"
+uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
+version = "1.4.3"
+
 [[deps.PrecompileTools]]
 deps = ["Preferences"]
 git-tree-sha1 = "5aa36f7049a63a1528fe8f7c3f2113413ffd4e1f"
@@ -923,6 +984,12 @@ deps = ["Dates"]
 git-tree-sha1 = "3bac05bc7e74a75fd9cba4295cde4045d9fe2386"
 uuid = "6c6a2e73-6563-6170-7368-637461726353"
 version = "1.2.1"
+
+[[deps.SentinelArrays]]
+deps = ["Dates", "Random"]
+git-tree-sha1 = "712fb0231ee6f9120e005ccd56297abbc053e7e0"
+uuid = "91c51154-3ec4-41a3-a24f-3f23e20d615c"
+version = "1.4.8"
 
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
@@ -1379,16 +1446,23 @@ version = "1.4.1+2"
 
 # ╔═╡ Cell order:
 # ╟─fa570bdd-3772-4750-980d-d75cf268ffcf
+# ╟─2adecdf9-45d8-4c18-8227-fb0a554ea3ca
 # ╟─5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
-# ╠═c7786892-73cf-4e23-bfe6-339feae6f4de
+# ╟─2a3461d3-c832-4064-b5e0-b1008b1a9cd4
+# ╟─c7786892-73cf-4e23-bfe6-339feae6f4de
+# ╟─ef64d57f-30e6-45dd-b598-65728d31b77b
 # ╟─9fef423f-6f85-48ab-86fa-7687af6ce184
 # ╟─1c89e4be-6cb6-4c0b-a3b4-b48e07617470
 # ╟─68af513d-c457-49f8-ba7c-d6ca7c142975
 # ╟─b00ddd51-7a31-4809-9830-05e76e2ff0f3
+# ╟─073d70ef-da1e-47dd-b0e5-a532b936c883
+# ╟─c45ce64f-2ae1-4120-adad-24c1f843498c
 # ╟─39c8e8f6-6852-4f3e-84b3-72e8c4e3db11
 # ╟─00bf348b-9e12-4486-a772-3fe1c26234cd
 # ╟─79d035b0-df28-4e7b-bba2-f484fd24e14c
-# ╠═b0df71f8-b3a3-477a-b4aa-5702491840e1
+# ╟─6a72863a-c5d6-46d3-b2ce-ffe420a49549
+# ╟─b0df71f8-b3a3-477a-b4aa-5702491840e1
+# ╟─0cbe5265-a2d2-45b6-bc8a-60173db020f0
 # ╟─4d344c68-f99a-4df5-be6f-cdf4cff29731
 # ╟─c2437329-a343-4909-af0a-55820fcce5b3
 # ╟─00000000-0000-0000-0000-000000000001
