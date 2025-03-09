@@ -57,11 +57,12 @@ end
 
 # ╔═╡ 1c89e4be-6cb6-4c0b-a3b4-b48e07617470
 begin
-	function wave_height_ana(t, omega=1, zeta_a=1)
-		zeta_ana = (2 * zeta_a * cos(omega * t))
-	end
 	using Plots
-	plot(range(0,25,100),wave_height_ana,xlims=(0, 25), ylims=(-3,3),xlabel="time [s]",ylabel="Wave height [m] - Analytical", label="Analytical Wave Height", legend=true)
+	plot(range(-400,0,100),xlims=(-400,0), ylims=(-150,150),xlabel="x" ,ylabel="y", label=nothing)
+	plot!([0,-400],[59/2,400/√8],c=:black,ls=:dot,label="outer wake angle")
+	plot!([0,-400],[-59/2,-400/√8],c=:black,ls=:dot,label=nothing)
+	plot!([0,-122],[59/2,-122/√8],c=:orange,ls=:dot,label="inner wake angle")
+	plot!([0,-122],[-59/2,122/√8],c=:orange,ls=:dot,label=nothing)
 end
 
 # ╔═╡ fa570bdd-3772-4750-980d-d75cf268ffcf
@@ -103,18 +104,8 @@ md"""
 ## Validation
 intro
 
-### Comparisson to analytical methods
-In order to validate the methodlogy used to compute the wave height for varying dimensions, a comparrisson can be made to the analytical description of the wave height as reflected from a wall. The expectation is that for increasing slot width's, the wave height that is observed should converge to the this analytical description. 
-
-The analytical description for a wave reflected from a wall can be constructed by a summation of the incoming wave, and the reflected wave. This results in the analytical expression for a standing wave:
-
-ζ(t) = ζ_i(t) + ζ_r(t) = ζ_a cos(-k*x-ω*t) +  ζ_a cos(k*x-ω*t) = 2ζ_a cos(k*x)cos(ω*t)
-
-For a wall located at x = 0, the expression becomes:
-
-ζ(t) = 2ζ_a cos(ω*t)
-
-The plot below shows the wave height for a wave refelcted by a wall in infitite waterdepth, with ζ_a = 1m, ω = 1 rad/s. Furthermore the plot shows the wave heights in the slot for increasing slot widths. 
+### Kelvin wake angles
+intro
 """
 
 # ╔═╡ 68af513d-c457-49f8-ba7c-d6ca7c142975
@@ -132,7 +123,7 @@ begin
 	par_range(ref) = vcat([ref * (1 - p) for p in 0.1:0.1:0.5][end:-1:1], ref, [ref * (1 + p) for p in 0.1:0.1:0.5])
 	slot_width = par_range(59)		#echte waarde
 	slot_length = par_range(122)	#echte waarde	
-	vessel_width = par_range(124)	#echte waarde
+	bow_width = par_range(32.5)	#echte waarde
 	hor_br = par_range(3)			#Niet publiek bekend, schatten met rhino
 	ver_br = par_range(5)			#Niet publiek bekend, schatten met rhino
 	out_bk = par_range(1)			#Niet publiek bekend, schatten met rhino
@@ -173,10 +164,10 @@ Furthermore, the variance range for all parameters are displayed in the table be
 
 # ╔═╡ 00bf348b-9e12-4486-a772-3fe1c26234cd
 begin
-	parameters = ["Slot width", "Slot length", "Vessel width", "Horizontal bow radius", "Vertical bow radius", "Outer bilge keel", "Inner bilge keel"]
+	parameters = ["Slot width", "Slot length", "Bow width", "Horizontal bow radius", "Vertical bow radius", "Outer bilge keel", "Inner bilge keel"]
 	sources = ["Real world value", "Real world value", "Real world value", "Approximated", "Approximated", "Approximated", "Approximated"]
 	
-	ranges = [slot_width, slot_length, vessel_width, hor_br, ver_br, out_bk, inn_bk]
+	ranges = [slot_width, slot_length, bow_width, hor_br, ver_br, out_bk, inn_bk]
 	
 	df_geometry = DataFrame(Parameter = parameters, Range = ranges, Source = sources)
 end
@@ -1452,7 +1443,7 @@ version = "1.4.1+2"
 # ╟─c7786892-73cf-4e23-bfe6-339feae6f4de
 # ╟─ef64d57f-30e6-45dd-b598-65728d31b77b
 # ╟─9fef423f-6f85-48ab-86fa-7687af6ce184
-# ╟─1c89e4be-6cb6-4c0b-a3b4-b48e07617470
+# ╠═1c89e4be-6cb6-4c0b-a3b4-b48e07617470
 # ╟─68af513d-c457-49f8-ba7c-d6ca7c142975
 # ╟─b00ddd51-7a31-4809-9830-05e76e2ff0f3
 # ╟─073d70ef-da1e-47dd-b0e5-a532b936c883
