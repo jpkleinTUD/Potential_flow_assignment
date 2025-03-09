@@ -19,7 +19,7 @@ begin
 	
 	 > 1. **Slot width** 
 	 > 2. **Slot length** 
-	 > 3. **Vessel width**
+	 > 3. **Bow width**
 	 > 4. **Horizonal bow radius**
 	 > 5. **Vertical bow radius**
 	 > 6. **Outer bilge keel**
@@ -86,7 +86,7 @@ md"""
 ## Research question
 
 
-This study will discuss the effect of the various geometries of the slot on the wave height that can be observed within the slot created by a constant foreward velocity, with the aim of ranking the influence of the geometric parameters from a wave making point of view.
+This study will discuss the effect of the various geometries of the slot on the wave height that can be observed within the slot created by foreward velocity, with the aim of ranking the influence of the geometric parameters from a wave making point of view.
 """
 
 # ╔═╡ 9fef423f-6f85-48ab-86fa-7687af6ce184
@@ -128,6 +128,7 @@ begin
 	ver_br = par_range(5)			#Niet publiek bekend, schatten met rhino
 	out_bk = par_range(1)			#Niet publiek bekend, schatten met rhino
 	inn_bk = par_range(1)			#Niet publiek bekend, schatten met rhino
+	
 end
 
 # ╔═╡ 00bf348b-9e12-4486-a772-3fe1c26234cd
@@ -1379,7 +1380,7 @@ version = "1.4.1+2"
 # ╔═╡ Cell order:
 # ╟─fa570bdd-3772-4750-980d-d75cf268ffcf
 # ╟─5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
-# ╟─c7786892-73cf-4e23-bfe6-339feae6f4de
+# ╠═c7786892-73cf-4e23-bfe6-339feae6f4de
 # ╟─9fef423f-6f85-48ab-86fa-7687af6ce184
 # ╟─1c89e4be-6cb6-4c0b-a3b4-b48e07617470
 # ╟─68af513d-c457-49f8-ba7c-d6ca7c142975
