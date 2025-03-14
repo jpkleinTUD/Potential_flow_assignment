@@ -617,11 +617,10 @@ end
 
 # ╔═╡ 68af513d-c457-49f8-ba7c-d6ca7c142975
 md"""
-When comparing the plots above, it can be observed that the double hull solution is pratically identical to a summation of an offset demihull solution. Thus, the double hull model is considered to be valid.
+When comparing the plots above, it can be observed that the double hull solution is practically identical to a summation of an offset demi-hull solution. Thus, the double hull model is considered to be valid.
 
-#### Double wigley hull with slot ####
-The hull as defined above is then used to define a hull shape that resembles the hull of the Pioneering spirit. This is acchieved by adding a plate to the back, bottom and middle of the double hull. This encloses a part of the hull from the water. Furthermore, the panels of the old double hull within this enclosed section are to be removed. This is done by defining the inner wigley hull sections only for the part in the slot. This definition can be seen in the code block below. Below that, the panels that define the hull are plotted. Finally, the resulting potential flow solution is plotted.
-
+#### Double Wigley hull with slot ####
+The hull, as defined above, is then used to define a hull shape that resembles the hull of the *Pioneering Spirit*. This is achieved by adding a plate to the back, bottom, and middle of the double hull. This encloses a part of the hull from the water. Furthermore, the panels of the old double hull within this enclosed section are to be removed. This is done by defining the inner Wigley hull sections only for the part in the slot. This definition can be seen in the code block below. Below that, the panels that define the hull are plotted. Finally, the resulting potential flow solution is plotted.
 """
 
 # ╔═╡ f16e3fb3-7316-4a6d-a35d-7751fed391a7
@@ -711,16 +710,15 @@ end
 
 # ╔═╡ 5e4d5334-46b2-4935-8f55-27b06a6d1cc5
 md"""
-The plot above depicts the wave patern caused by the slotted wigley hull sailing at Fn = 0.2. The plot shows that the introduction of the slot causes a bow wave in front of the vertical section of the slot, which intuitively makes sense. However, it can also be noted that the one meter long vessel is inducing a wake with a wave height north of two meters. For the real world version of the vessel, this would correspond to wake waves of 800m amplitude. This is considered physically impossible, leading to the conclusion that the model above is not clearly depicting reality. This can be contributed to one of two errors:
+The plot above depicts the wave pattern caused by the slotted Wigley hull sailing at Fn = 0.2. The plot shows that the introduction of the slot causes a bow wave in front of the vertical section of the slot, which intuitively makes sense. However, it can also be noted that the one-meter-long vessel is inducing a wake with a wave height exceeding two meters. For the real-world version of the vessel, this would correspond to wake waves with an amplitude of 800m. This is considered physically impossible, leading to the conclusion that the model above is not clearly depicting reality. This can be attributed to one of two errors:
 
-##### Modelling error #####
-1. The potential flow solver does not take viscous effects into account. Since the shape of the vessel is quite aggressive it is likely that the real world flow would experience high velocties in these areas. These high velocities would lead to viscous damping in the real world scenrio, which cannot be modelled in the potential flow solver.
+##### Modeling error #####
+1. The potential flow solver does not take viscous effects into account. Since the shape of the vessel is quite aggressive, it is likely that the real-world flow would experience high velocities in these areas. These high velocities would lead to viscous damping in the real-world scenario, which cannot be modeled in the potential flow solver.
 
-2. The model contains 90 degree angles in various places. These angles could lead to singularities in the potential, leading to non-realistic results. This source of error could be validated, and potentially omitted, by creating a model with curved edges rather than 90 degree angels. Due to time constraints, this validation is not performed in this study.
-
+2. The model contains 90-degree angles in various places. These angles could lead to singularities in the potential, resulting in unrealistic results. This source of error could be validated, and potentially mitigated, by creating a model with curved edges rather than 90-degree angles. Due to time constraints, this validation is not performed in this study.
 
 ##### Human error #####
-It could be that there is an error in the geometry definition, leading to an incorrect solution. This can be checked by comparing the solution of the slotted wigley hull with the solution for the NURBS output.
+It is possible that there is an error in the geometry definition, leading to an incorrect solution. This can be checked by comparing the solution of the slotted Wigley hull with the solution for the NURBS output.
 """
 
 # ╔═╡ 96f047dc-eb1c-4520-bad0-b4670fbafe57
@@ -913,15 +911,15 @@ md"""
 
 # ╔═╡ c2437329-a343-4909-af0a-55820fcce5b3
 md"""
-This notebook outlined a study into the use of Grasshopper3D be used to create complex hull shapes compatible with the NeumannKelvin.jl package. 
+This notebook outlined a study into the use of Grasshopper3D to create complex hull shapes compatible with the NeumannKelvin.jl package.
 
-First, it has been investigated what workflow is required in order to retrieve a hull description that is usable with the NeumannKelvin packages. It has been found that the hull format is to be exported as a JSON file. Furthermore, three functions have been written in order to convert the input into a hull description compatible with the NeumannKelvin packages: "importMesh", "createPanel" and "psShape".
+First, the required workflow to retrieve a hull description usable with the NeumannKelvin package has been investigated. It has been found that the hull format should be exported as a JSON file. Furthermore, three functions have been written to convert the input into a hull description compatible with the NeumannKelvin package: "importMesh," "createPanel," and "psShape."
 
-After that, the wave pattern induced by the hull shape has been analyzed using the NeumannKelvin packages. This wave pattern was then compared to the wave pattern induced by a wigley hull that has been modified such that its shape is comparable to that of the grasshopper input hull. While the absolute values of the wave patterns display unphysical behaviour, their shapes resemble both eachother, and a wave pattern that is intuitively expected for the hull shapes. Therefore it has been concluded that, while this study was not able to accurately define the wave patern that is induced by a complex hull shape, it is considered possible with the employed methodology.
+After that, the wave pattern induced by the hull shape has been analyzed using the NeumannKelvin package. This wave pattern was then compared to the wave pattern induced by a Wigley hull that was modified to resemble the Grasshopper input hull. While the absolute values of the wave patterns display unphysical behavior, their shapes resemble both each other and a wave pattern that is intuitively expected for the hull shapes. Therefore, it has been concluded that, while this study was not able to accurately define the wave pattern induced by a complex hull shape, it is considered possible with the employed methodology.
 
-Addtionally, the use of a demi-hull in order to improve processing ability has been studied. Since neither the model for the demi-hull nor the full model displayed converging behaviour, the answer to this subquestion remains indifferent. 
+Additionally, the use of a demi-hull to improve processing ability has been studied. Since neither the model for the demi-hull nor the full model displayed converging behavior, the answer to this subquestion remains inconclusive.
 
-Finally, it has been concluded that the study above has not been able to compute valid results. However, given more time, the methodology outlined above is considered promissing in the field of complex potential flow modelling.
+Finally, it has been concluded that the study above has not been able to compute valid results. However, given more time, the methodology outlined above is considered promising in the field of complex potential flow modeling.
 """
 
 # ╔═╡ 1d56fa89-f345-4502-b7da-3128b62384de
@@ -2604,7 +2602,7 @@ version = "1.4.1+2"
 # ╠═301d6aed-a9f6-4a3c-9a41-0a4f693e1355
 # ╠═9998b3e0-a799-42a5-889a-91908d1268dd
 # ╠═744044c4-0ca8-400c-b049-71e16ef052d9
-# ╟─9fef423f-6f85-48ab-86fa-7687af6ce184
+# ╠═9fef423f-6f85-48ab-86fa-7687af6ce184
 # ╠═110b514a-6666-48f6-ba52-4b188caf9ca3
 # ╟─3079d163-b5b0-4ad8-aaeb-0c32fe721f21
 # ╟─9a2dc360-058b-4ba9-a477-bad65e2d2dae
@@ -2632,7 +2630,7 @@ version = "1.4.1+2"
 # ╠═2ccb150c-a71f-42eb-b228-a3f301c0fa93
 # ╟─e315acb0-f0a0-4a2d-adc3-c510e0f46997
 # ╟─4d344c68-f99a-4df5-be6f-cdf4cff29731
-# ╟─c2437329-a343-4909-af0a-55820fcce5b3
+# ╠═c2437329-a343-4909-af0a-55820fcce5b3
 # ╟─1d56fa89-f345-4502-b7da-3128b62384de
 # ╠═e77289b9-b7d6-4a20-9b09-777ee67f4a1a
 # ╟─00000000-0000-0000-0000-000000000001
