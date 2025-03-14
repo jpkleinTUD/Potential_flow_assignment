@@ -173,6 +173,9 @@ end
 md"""### Main functions"""
 
 # ╔═╡ e64e3e12-d797-4fd0-b2e6-c371b8aebf82
+
+
+# ╔═╡ 1d5b75bc-9b23-473d-bc43-5d492c621d5d
 function createPanel(vertices::Array{Array{Float64, 1}, 1},
 					 normals::Array{Array{Float64, 1}, 1}, 
 					 faces::Array{Int64, 1});
@@ -444,8 +447,10 @@ md"""
 """
 
 # ╔═╡ beb1d70b-d5eb-4f0e-9c40-3c9abbcf63b6
+# ╠═╡ disabled = true
+#=╠═╡
 begin
-data_dir = joinpath(@__DIR__, "..", "src", "data", "grid_convergence");
+data_dir = joinpath(@__DIR__, "..", "src", "data", "grid_convergence_bigger");
 files = readdir(data_dir);
 resistances_full = Dict(0=>(0.0, 0.0))
 resistances_half = Dict(0=>(0.0, 0.0))
@@ -464,8 +469,10 @@ for file in files
 	end
 end
 end
+  ╠═╡ =#
 
 # ╔═╡ b40cf08b-81ef-4055-9cdc-e7ef647a4830
+#=╠═╡
 begin
     # Sort the data by number of panels
     sorted_full = sort(collect(filter(p -> p.first != 0, resistances_full)))
@@ -518,8 +525,11 @@ begin
     # Display with both scales
     plot(p, xticks=:native)
 end
+  ╠═╡ =#
 
 # ╔═╡ 2ccb150c-a71f-42eb-b228-a3f301c0fa93
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 data_dir_bigger = joinpath(@__DIR__, "..", "src", "data", "grid_convergence_bigger");
 full_path = joinpath(data_dir_bigger, "PS_hull_0313_17-14_double_6894p.json")
@@ -534,6 +544,7 @@ q_half_big, ps_half_big, _ = solve_sources(panels_half_big; demi=true, verbose=f
 println(added_mass(panels_full_big; ps_full_big))
 println(added_mass(panels_half_big; ps_half_big))
 end
+  ╠═╡ =#
 
 # ╔═╡ e315acb0-f0a0-4a2d-adc3-c510e0f46997
 
@@ -2313,6 +2324,7 @@ version = "1.4.1+2"
 # ╟─f41c5399-987a-4122-b283-76f488eaabb7
 # ╠═e64e3e12-d797-4fd0-b2e6-c371b8aebf82
 # ╠═520977d9-d16c-4dc1-83e2-6d6bd058662c
+# ╠═1d5b75bc-9b23-473d-bc43-5d492c621d5d
 # ╟─bc054f16-5c7a-4b8d-b9af-abe0e1965573
 # ╟─e513f638-a083-4bfb-aa3e-6450d37001b5
 # ╠═40a64ec4-cdaa-497d-9283-c3c1da062d58
