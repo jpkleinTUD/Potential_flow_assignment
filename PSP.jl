@@ -16,6 +16,37 @@ macro bind(def, element)
     #! format: on
 end
 
+# ╔═╡ 2bc4a9ed-2e7a-4eb9-8e1d-37939b665753
+using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, Plots, PlotlyBase,PlotlyKaleido, PlutoUI
+
+# ╔═╡ 480da64b-20da-4baa-b40a-4442a689f22a
+begin 
+	using NeumannKelvin:kelvin,wavelike,nearfield
+	# From wigley notebook
+	reflect(x::SVector;flip=SA[1,-1,1]) = x.*flip
+	reflect(p::NamedTuple;flip=SA[1,-1,1]) = (x=reflect(p.x;flip), 
+		n=reflect(p.n;flip), dA=p.dA, x₄=reflect.(p.x₄;flip), wl=p.wl)
+	
+	function NeumannKelvin.kelvin(ξ,α;Fn,max_z=-1/50);
+		ξ[3]> 0 && throw(DomainError(ξ[3],"Sources must be below z=0"));
+		x,y,z = (ξ-α)/Fn^2;
+		z = min(z,max_z/Fn^2); # limit z!! 💔
+		(nearfield(x,y,z)+wavelike(x,abs(y),z))/Fn^2;
+	end
+
+	∫contour(x,p;Fn) = kelvin(x,p.x .* SA[1,1,0];Fn)*p.n[1]*p.dA;
+	
+	function ∫surface(x,p;Fn,χ=true,dz=0);
+		(!χ || !p.wl) && return ∫kelvin(x,p;Fn,dz); # no waterline
+		∫kelvin(x,p;Fn,dz)+∫contour(x,p;Fn);
+	end
+	
+	function ∫surface_S₂(x,p;kwargs...);  # y-symmetric potentials
+	    ∫surface(x,p;kwargs...)+∫surface(x,reflect(p,flip=SA[1,-1,1]);kwargs...);
+	end
+end
+
+
 # ╔═╡ fa570bdd-3772-4750-980d-d75cf268ffcf
 md"""
 # Using grasshopper as a parametric design tool for potential flow around a complex hull shape
@@ -39,6 +70,12 @@ The following sub-questions were investigated:
 The final goal of the study is to develop a method to improve the efficiency of the most time consuming part of potential flow simulation - the creation of the model [1]
 
 """
+
+# ╔═╡ 2adecdf9-45d8-4c18-8227-fb0a554ea3ca
+# ╠═╡ disabled = true
+#=╠═╡
+using NeumannKelvin, Markdown, Plots
+  ╠═╡ =#
 
 # ╔═╡ 5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
 md"""
@@ -349,6 +386,25 @@ The solve_sources function has been created to calculate the strengths of the so
 
 """
 
+# ╔═╡ cbe65c11-2ee2-4439-8d47-efa8fa9eccdc
+function solve_sources(panels; demi=false, Fn=0.2, verbose=false)
+	if demi
+		ps = (ϕ=∫surface_S₂,Fn=Fn)
+	else
+		ps = (ϕ=∫surface,Fn=Fn)# NamedTuple of keyword-arguments
+	end
+	A = influence(panels;ps...)
+	
+	if verbose
+		A_diag = [A[i, i] for i in axes(A, 1)]
+		print("Min A: $(minimum(A_diag)), Mean A: $(sum(A_diag)/length(A_diag)), Max A: $(maximum(A_diag))")
+	end
+	
+	b = first.(panels.n)
+	q = A\b # solve for densities
+	return q, ps, A
+end;
+
 # ╔═╡ 223f5aa4-fa41-4414-94b3-6b125e9091e0
 md"""
 Using these functions the second sub-question is answered: "How can the hull be converted to the NeumannKelvin packages required input format?"
@@ -431,6 +487,12 @@ The corresponding velocity is $(round(1.944 * Fn1√(9.81*length_ps); digits=2))
 """
   ╠═╡ =#
 
+# ╔═╡ 860dc015-a6f8-44e8-81d4-3c3391cef7dd
+# ╠═╡ disabled = true
+#=╠═╡
+q, ps, A = solve_sources(panels;Fn=Fn1);
+  ╠═╡ =#
+
 # ╔═╡ 301d6aed-a9f6-4a3c-9a41-0a4f693e1355
 # ╠═╡ disabled = true
 #=╠═╡
@@ -441,6 +503,25 @@ begin
 	plot? $(@bind plot_contour_1 CheckBox(default=false))
 	"""
 end
+  ╠═╡ =#
+
+# ╔═╡ 9998b3e0-a799-42a5-889a-91908d1268dd
+# ╠═╡ disabled = true
+#=╠═╡
+begin
+if plot_contour_1
+    plotly()
+    Plots.contourf(-2:h_mean:2,-2:h_mean:2, (x,y)->2ζ(x,y,q,panels;ps...),
+        c=:balance, aspect_ratio=:equal);
+    Plots.plot!(shape, c=:blue,legend=nothing)
+end
+end
+  ╠═╡ =#
+
+# ╔═╡ 744044c4-0ca8-400c-b049-71e16ef052d9
+# ╠═╡ disabled = true
+#=╠═╡
+added_mass(panels; ps)
   ╠═╡ =#
 
 # ╔═╡ 9fef423f-6f85-48ab-86fa-7687af6ce184
@@ -517,42 +598,29 @@ begin
 end
   ╠═╡ =#
 
-# ╔═╡ cbe65c11-2ee2-4439-8d47-efa8fa9eccdc
-function solve_sources(panels; demi=false, Fn=0.2, verbose=false)
-	if demi
-		ps = (ϕ=∫surface_S₂,Fn=Fn)
-	else
-		ps = (ϕ=∫surface,Fn=Fn)# NamedTuple of keyword-arguments
-	end
-	A = influence(panels;ps...)
-	
-	if verbose
-		A_diag = [A[i, i] for i in axes(A, 1)]
-		print("Min A: $(minimum(A_diag)), Mean A: $(sum(A_diag)/length(A_diag)), Max A: $(maximum(A_diag))")
-	end
-	
-	b = first.(panels.n)
-	q = A\b # solve for densities
-	return q, ps, A
-end;
-
-# ╔═╡ 9998b3e0-a799-42a5-889a-91908d1268dd
+# ╔═╡ 9a2dc360-058b-4ba9-a477-bad65e2d2dae
 # ╠═╡ disabled = true
 #=╠═╡
 begin
-if plot_contour_1
-    plotly()
-    Plots.contourf(-2:h_mean:2,-2:h_mean:2, (x,y)->2ζ(x,y,q,panels;ps...),
-        c=:balance, aspect_ratio=:equal);
-    Plots.plot!(shape, c=:blue,legend=nothing)
+	Fnq = 0.2 	# Froude number 0.2 taken consistent across all models
+	### CODE BELOW TAKEN DIRECTLY FROM WIGLEY.JL ###
+	function NeumannKelvin.kelvin(ξ,α;Fn,max_z=-1/50)
+		ξ[3]> 0 && throw(DomainError(ξ[3],"Sources must be below z=0"))
+		x,y,z = (ξ-α)/Fn^2
+		z = min(z,max_z/Fn^2) # limit z!! 💔
+		(nearfield(x,y,z)+wavelike(x,abs(y),z))/Fn^2
+	end
+	
+	∫contour(x,p;Fn) = kelvin(x,p.x .* SA[1,1,0];Fn)*p.n[1]*p.dA
+	function ∫surface(x,p;Fn,χ=true,dz=0)
+		(!χ || p.x[3]^2 > p.dA) && return ∫kelvin(x,p;Fn,dz) # no waterline
+		∫kelvin(x,p;Fn,dz)+∫contour(x,p;Fn)
+	end
+	
+	ps = (ϕ=∫surface,Fn=Fnq)        # NamedTuple of keyword-arguments
+	q = influence(doublehull;ps...)\first.(doublehull.n); # solve for densities
+	### CODE ABOVE TAKEN DIRECTLY FROM WIGLEY.JL ###
 end
-end
-  ╠═╡ =#
-
-# ╔═╡ 744044c4-0ca8-400c-b049-71e16ef052d9
-# ╠═╡ disabled = true
-#=╠═╡
-added_mass(panels; ps)
   ╠═╡ =#
 
 # ╔═╡ 1c89e4be-6cb6-4c0b-a3b4-b48e07617470
@@ -779,6 +847,16 @@ begin
 	nothing
 end
 
+# ╔═╡ 073d70ef-da1e-47dd-b0e5-a532b936c883
+md"""
+## The study
+
+ 1. **The importance of total vessel length** 
+
+ 2. **Computing the speed range and the parameter variance range for all variables**
+Based on the vessel length computed above, the speed range over which each hull geometry is to be evaluated becomes:
+"""
+
 # ╔═╡ c45ce64f-2ae1-4120-adad-24c1f843498c
 # ╠═╡ disabled = true
 #=╠═╡
@@ -791,16 +869,6 @@ begin
 	df_speed = DataFrame(Value = value, Range = speed_ranges)
 end
   ╠═╡ =#
-
-# ╔═╡ 073d70ef-da1e-47dd-b0e5-a532b936c883
-md"""
-## The study
-
- 1. **The importance of total vessel length** 
-
- 2. **Computing the speed range and the parameter variance range for all variables**
-Based on the vessel length computed above, the speed range over which each hull geometry is to be evaluated becomes:
-"""
 
 # ╔═╡ 39c8e8f6-6852-4f3e-84b3-72e8c4e3db11
 md"""
@@ -851,74 +919,6 @@ begin
 	@eval Main.PlutoRunner format_output(x::Float64; context = default_iocontext) = format_output_default(round(x; digits = 3), context)
 	@eval Main.PlutoRunner format_output(x::AbstractArray{Float64}; context = default_iocontext) = format_output_default(round.(x; digits = 3), context)
 end;
-
-# ╔═╡ 860dc015-a6f8-44e8-81d4-3c3391cef7dd
-# ╠═╡ disabled = true
-#=╠═╡
-q, ps, A = solve_sources(panels;Fn=Fn1);
-  ╠═╡ =#
-
-# ╔═╡ 9a2dc360-058b-4ba9-a477-bad65e2d2dae
-# ╠═╡ disabled = true
-#=╠═╡
-begin
-	Fnq = 0.2 	# Froude number 0.2 taken consistent across all models
-	### CODE BELOW TAKEN DIRECTLY FROM WIGLEY.JL ###
-	function NeumannKelvin.kelvin(ξ,α;Fn,max_z=-1/50)
-		ξ[3]> 0 && throw(DomainError(ξ[3],"Sources must be below z=0"))
-		x,y,z = (ξ-α)/Fn^2
-		z = min(z,max_z/Fn^2) # limit z!! 💔
-		(nearfield(x,y,z)+wavelike(x,abs(y),z))/Fn^2
-	end
-	
-	∫contour(x,p;Fn) = kelvin(x,p.x .* SA[1,1,0];Fn)*p.n[1]*p.dA
-	function ∫surface(x,p;Fn,χ=true,dz=0)
-		(!χ || p.x[3]^2 > p.dA) && return ∫kelvin(x,p;Fn,dz) # no waterline
-		∫kelvin(x,p;Fn,dz)+∫contour(x,p;Fn)
-	end
-	
-	ps = (ϕ=∫surface,Fn=Fnq)        # NamedTuple of keyword-arguments
-	q = influence(doublehull;ps...)\first.(doublehull.n); # solve for densities
-	### CODE ABOVE TAKEN DIRECTLY FROM WIGLEY.JL ###
-end
-  ╠═╡ =#
-
-# ╔═╡ 2adecdf9-45d8-4c18-8227-fb0a554ea3ca
-# ╠═╡ disabled = true
-#=╠═╡
-using NeumannKelvin, Markdown, Plots
-  ╠═╡ =#
-
-# ╔═╡ 480da64b-20da-4baa-b40a-4442a689f22a
-begin 
-	using NeumannKelvin:kelvin,wavelike,nearfield
-	# From wigley notebook
-	reflect(x::SVector;flip=SA[1,-1,1]) = x.*flip
-	reflect(p::NamedTuple;flip=SA[1,-1,1]) = (x=reflect(p.x;flip), 
-		n=reflect(p.n;flip), dA=p.dA, x₄=reflect.(p.x₄;flip), wl=p.wl)
-	
-	function NeumannKelvin.kelvin(ξ,α;Fn,max_z=-1/50);
-		ξ[3]> 0 && throw(DomainError(ξ[3],"Sources must be below z=0"));
-		x,y,z = (ξ-α)/Fn^2;
-		z = min(z,max_z/Fn^2); # limit z!! 💔
-		(nearfield(x,y,z)+wavelike(x,abs(y),z))/Fn^2;
-	end
-
-	∫contour(x,p;Fn) = kelvin(x,p.x .* SA[1,1,0];Fn)*p.n[1]*p.dA;
-	
-	function ∫surface(x,p;Fn,χ=true,dz=0);
-		(!χ || !p.wl) && return ∫kelvin(x,p;Fn,dz); # no waterline
-		∫kelvin(x,p;Fn,dz)+∫contour(x,p;Fn);
-	end
-	
-	function ∫surface_S₂(x,p;kwargs...);  # y-symmetric potentials
-	    ∫surface(x,p;kwargs...)+∫surface(x,reflect(p,flip=SA[1,-1,1]);kwargs...);
-	end
-end
-
-
-# ╔═╡ 2bc4a9ed-2e7a-4eb9-8e1d-37939b665753
-using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, Plots, PlotlyBase,PlotlyKaleido, PlutoUI
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
