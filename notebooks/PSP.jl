@@ -460,12 +460,17 @@ begin
 	title = "Double Wigley hull with waterline panels marked")
 end
 
-# ╔═╡ 1c89e4be-6cb6-4c0b-a3b4-b48e07617470
-#=╠═╡
+# ╔═╡ 9a2dc360-058b-4ba9-a477-bad65e2d2dae
 begin
 	Fnq = 0.2 	# Froude number 0.2 taken consistent across all models
-	
 	### CODE BELOW TAKEN DIRECTLY FROM WIGLEY.JL ###
+	function NeumannKelvin.kelvin(ξ,α;Fn,max_z=-1/50)
+		ξ[3]> 0 && throw(DomainError(ξ[3],"Sources must be below z=0"))
+		x,y,z = (ξ-α)/Fn^2
+		z = min(z,max_z/Fn^2) # limit z!! 💔
+		(nearfield(x,y,z)+wavelike(x,abs(y),z))/Fn^2
+	end
+	
 	∫contour(x,p;Fn) = kelvin(x,p.x .* SA[1,1,0];Fn)*p.n[1]*p.dA
 	function ∫surface(x,p;Fn,χ=true,dz=0)
 		(!χ || p.x[3]^2 > p.dA) && return ∫kelvin(x,p;Fn,dz) # no waterline
@@ -473,17 +478,18 @@ begin
 	end
 	
 	ps = (ϕ=∫surface,Fn=Fnq)        # NamedTuple of keyword-arguments
-	q = influence(doublehull;ps...)\first.(doublehull.n) # solve for densities
+	q = influence(doublehull;ps...)\first.(doublehull.n); # solve for densities
 	### CODE ABOVE TAKEN DIRECTLY FROM WIGLEY.JL ###
+end
 
-	Plots.contourf(-1.5:h:1,-1:h:1,(x,y)->ζ(x,y,q,doublehull;ps...),
+# ╔═╡ 1c89e4be-6cb6-4c0b-a3b4-b48e07617470
+Plots.contourf(-1.5:h:1,-1:h:1,(x,y)->ζ(x,y,q,doublehull;ps...),
 	c=:balance,aspect_ratio=:equal,clims=(-0.3,0.3));Plots.plot!(
 	wigley_shape_l_1(h),c=:black,legend=nothing);Plots.plot!(
 	wigley_shape_r_1(h),c=:black,legend=nothing);Plots.plot!(
 	wigley_shape_l_2(h),c=:black,legend=nothing);Plots.plot!(
 	wigley_shape_r_2(h),c=:black,legend=nothing)
-end;
-  ╠═╡ =#
+
 
 # ╔═╡ 68af513d-c457-49f8-ba7c-d6ca7c142975
 md"""
@@ -2307,33 +2313,34 @@ version = "1.4.1+2"
 # ╟─5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
 # ╟─c7786892-73cf-4e23-bfe6-339feae6f4de
 # ╟─ef64d57f-30e6-45dd-b598-65728d31b77b
-# ╟─adc7fdd3-b339-4573-9717-34d7d4ac0324
-# ╟─aa0202ef-8dea-4c3f-a017-fe367efca375
+# ╠═adc7fdd3-b339-4573-9717-34d7d4ac0324
+# ╠═aa0202ef-8dea-4c3f-a017-fe367efca375
 # ╟─62c1471f-5803-4b61-85fd-4a3bafde8210
 # ╟─f41c5399-987a-4122-b283-76f488eaabb7
 # ╠═e64e3e12-d797-4fd0-b2e6-c371b8aebf82
-# ╟─520977d9-d16c-4dc1-83e2-6d6bd058662c
-# ╟─1d5b75bc-9b23-473d-bc43-5d492c621d5d
-# ╟─bc054f16-5c7a-4b8d-b9af-abe0e1965573
+# ╠═520977d9-d16c-4dc1-83e2-6d6bd058662c
+# ╠═1d5b75bc-9b23-473d-bc43-5d492c621d5d
+# ╠═bc054f16-5c7a-4b8d-b9af-abe0e1965573
 # ╟─e513f638-a083-4bfb-aa3e-6450d37001b5
-# ╟─40a64ec4-cdaa-497d-9283-c3c1da062d58
+# ╠═40a64ec4-cdaa-497d-9283-c3c1da062d58
 # ╟─5fa06031-f734-42e7-95bf-fd0daf506687
-# ╟─98e84ada-af82-4715-b894-6a9e1153ebb8
-# ╟─264da090-b49b-4203-903c-a2fe81f165aa
+# ╠═98e84ada-af82-4715-b894-6a9e1153ebb8
+# ╠═264da090-b49b-4203-903c-a2fe81f165aa
 # ╟─7e195849-db71-401b-8c3c-68c712135390
-# ╟─3006e2d4-c8b9-48a3-9857-5ab15b59238e
+# ╠═3006e2d4-c8b9-48a3-9857-5ab15b59238e
 # ╠═a0c223be-1c3e-4fc2-aa5b-e6b6e077eb40
-# ╟─b2203672-3079-49ec-a7f4-e09804136b86
+# ╠═b2203672-3079-49ec-a7f4-e09804136b86
 # ╟─8546b716-93fc-4372-81be-f72566f8ad9d
-# ╟─277b39c7-d1a6-44dc-ab94-0df434f45ebc
-# ╟─f34a6fa6-2d59-41ad-93fd-e431c52357c9
-# ╟─860dc015-a6f8-44e8-81d4-3c3391cef7dd
-# ╟─301d6aed-a9f6-4a3c-9a41-0a4f693e1355
-# ╟─9998b3e0-a799-42a5-889a-91908d1268dd
-# ╟─744044c4-0ca8-400c-b049-71e16ef052d9
+# ╠═277b39c7-d1a6-44dc-ab94-0df434f45ebc
+# ╠═f34a6fa6-2d59-41ad-93fd-e431c52357c9
+# ╠═860dc015-a6f8-44e8-81d4-3c3391cef7dd
+# ╠═301d6aed-a9f6-4a3c-9a41-0a4f693e1355
+# ╠═9998b3e0-a799-42a5-889a-91908d1268dd
+# ╠═744044c4-0ca8-400c-b049-71e16ef052d9
 # ╟─9fef423f-6f85-48ab-86fa-7687af6ce184
 # ╠═110b514a-6666-48f6-ba52-4b188caf9ca3
 # ╟─3079d163-b5b0-4ad8-aaeb-0c32fe721f21
+# ╠═9a2dc360-058b-4ba9-a477-bad65e2d2dae
 # ╠═1c89e4be-6cb6-4c0b-a3b4-b48e07617470
 # ╟─68af513d-c457-49f8-ba7c-d6ca7c142975
 # ╟─96f047dc-eb1c-4520-bad0-b4670fbafe57
@@ -2342,7 +2349,7 @@ version = "1.4.1+2"
 # ╠═dee1baa0-8614-465c-b232-afba4df9fe5f
 # ╠═8195e9a2-e85f-4e15-aba9-1096add9b77c
 # ╠═d61b5b53-0ab1-4fee-8ce1-1845c54e918e
-# ╟─3a72df8a-79a0-4087-beff-f839a5ddc133
+# ╠═3a72df8a-79a0-4087-beff-f839a5ddc133
 # ╠═9d9ad896-0388-4802-bb0e-bc7f62db127f
 # ╠═29891ae5-f88d-4618-acb2-ecf70cb4ed21
 # ╠═42f16fad-8b1f-4292-8834-d25cd1eaa3db
