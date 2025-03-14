@@ -34,44 +34,44 @@ end
 
 # ╔═╡ fa570bdd-3772-4750-980d-d75cf268ffcf
 md"""
-# Using grasshopper as a parametric design tool for potential flow around a complex hull shape
+# Using Grasshopper as a Parametric Design Tool for Potential Flow Around a Complex Hull Shape
 *Albert Aperghis (5032881) and Jasper Klein (5343569)*
 
-Ships come in all shapes and size's. Some are small, some are large and some are absolutely ridiculously large. Enter the Pioneering Spirit. With it's 1,000,000 m^3 maximum displacement, the vessel can be considered the largest vessel in the world based on displaced water. While this vessel boasts many remarkable features, one can't help but notice the massive missing chunk from the bow of the vessel; the slot. 
+Ships come in all shapes and sizes. Some are small, some are large, and some are absolutely ridiculously large. Enter the *Pioneering Spirit*. With its 1,000,000 m³ maximum displacement, the vessel can be considered the largest in the world based on displaced water. While this vessel boasts many remarkable features, one can't help but notice the massive missing chunk from the bow of the vessel—the slot.  
 
-![](https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/5e0a23cb8579561da9db78cd721f6f718f46b1e5/Images/PS_slot.png)
+![](https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/5e0a23cb8579561da9db78cd721f6f718f46b1e5/Images/PS_slot.png)  
 
-The original aim of this project was to perform a parametric design study on the hull shape of the Pioneering Spirit (PS). In the course of the project several challenges were encountered, and as such the decision was made to limit the scope to the following research question:
+The original aim of this project was to perform a parametric design study on the hull shape of the *Pioneering Spirit* (PS). During the course of the project, several challenges were encountered, and as such, the decision was made to limit the scope to the following research question:  
 
-**How can Grasshopper3D be used to create complex hull shapes compatible with the NeumannKelvin.jl package**
+**How can Grasshopper3D be used to create complex hull shapes compatible with the NeumannKelvin.jl package?**  
 
-The following sub-questions were investigated:
- - What format does the hull need to have to be exported to Julia?
- - How can the hull be converted to the NeumannKelvin packages required input format?
- - Does this method generate a realistic wake pattern?
- - Can a demi-hull be used to improve processing?
- - Are the results valid?
+The following sub-questions were investigated:  
+- What format does the hull need to have to be exported to Julia?  
+- How can the hull be converted to the NeumannKelvin package's required input format?  
+- Does this method generate a realistic wake pattern?  
+- Can a demi-hull be used to improve processing?  
+- Are the results valid?  
 
-The final goal of the study is to develop a method to improve the efficiency of the most time consuming part of potential flow simulation - the creation of the model [1]
-
+The final goal of the study is to develop a method to improve the efficiency of the most time-consuming part of potential flow simulation—the creation of the model. [1]  
 """
 
 # ╔═╡ 5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
 md"""
-## Grasshopper
-"For designers who are exploring new shapes using generative algorithms, Grasshopper® is a graphical algorithm editor tightly integrated with Rhino’s 3-D modeling tools. Unlike RhinoScript, Grasshopper requires no knowledge of programming or scripting, but still allows designers to build form generators from the simple to the awe-inspiring. " [2]
+## Grasshopper  
+"For designers who are exploring new shapes using generative algorithms, Grasshopper® is a graphical algorithm editor tightly integrated with Rhino’s 3D modeling tools. Unlike RhinoScript, Grasshopper requires no knowledge of programming or scripting but still allows designers to build form generators from the simple to the awe-inspiring." [2]  
 
-Grasshopper allows the simple creation of parametric models in Rhino-3D, without programming experience. This makes it possible to visually see the model being created in real time, a useful attribute when creating complex models.
-![PS Hull created by Grasshopper]
-(https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/refs/heads/main/Images/Rhino_grasshopper.png)
-	
-### The model
+Grasshopper allows the simple creation of parametric models in Rhino 3D without programming experience. This makes it possible to visually see the model being created in real time, a useful attribute when creating complex models.  
 
-For this project, a parametric model of the PS was made. The model features 3 primary parts. The input paramters, the creation of the Brep model, and the export to Julia. 
+![PS Hull created by Grasshopper](https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/refs/heads/main/Images/Rhino_grasshopper.png)  
 
-![](https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/refs/heads/main/Images/grasshopper_complete.png)
+### The model  
 
-The first method attempted was to save the model as a STEP file, and use the NURBS.jl package to load the geometry.  
+For this project, a parametric model of the *Pioneering Spirit* (PS) was made. The model features three primary parts: the input parameters, the creation of the Brep model, and the export to Julia.  
+
+![](https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/refs/heads/main/Images/grasshopper_complete.png)  
+
+The first method attempted was to save the model as a STEP file and use the NURBS.jl package to load the geometry.  
+ 
 """
 
 
@@ -143,7 +143,7 @@ window.PlotlyConfig = {MathJaxConfig: 'local'};
 
 # ╔═╡ 998e97f5-fc3d-4fc5-8400-fa6f3a42f050
 md"""
-Note, this plot is an embedded HTML version of the plot. This was done as Pluto is not compatible with PlotlyJS plots. The actual plot can be created using a seperate Julia script with the following code:
+Note: This plot is an embedded HTML version of the plot. This was done because Pluto is not compatible with PlotlyJS plots. The actual plot can be created using a separate Julia script with the following code:
 """
 
 # ╔═╡ 091882c9-eae3-41aa-b8eb-fb907f5c0860
@@ -157,20 +157,20 @@ md"""
 
 # ╔═╡ 6af1e9d6-07f6-4c40-a277-ab6421d669ae
 md"""
-As can be seen in the plot, this does not seem to work properly. Diving into the documentation of NURBS.jl reveals the issue.
+As can be seen in the plot, this does not seem to work properly. Diving into the documentation of NURBS.jl reveals the issue.  
 
-![](https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/refs/heads/main/Images/nurbs_docs.png)
+![](https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/refs/heads/main/Images/nurbs_docs.png)  
 
-As it turns out, the majority of the model is not one of these two surface types. This setback meant a new method had to be devised. 
+As it turns out, the majority of the model is not one of these two surface types. This setback meant a new method had to be devised.  
 
-### Meshing and Export to julia
-To work around the issue of NURBS not working on this model, Grasshopper's LunchBox module was used to create a quad mesh of the model. This method meshing  had a couple of benefits. First of all, the algorithm used implemented adaptive meshing, ensuring smaller panel sizes in places with more curvature. It also allowed the user to quickly check the mesh visually for any strange or missing sections. The target number of panels could be specified and the algorithm would do its best to create that number of panels. Finally, because the vertices were exported, determining which panels are surface panels was easy to do later on.
+### Meshing and Export to Julia  
+To work around the issue of NURBS not working on this model, Grasshopper's LunchBox module was used to create a quad mesh of the model. This meshing method had a couple of benefits. First of all, the algorithm used implemented adaptive meshing, ensuring smaller panel sizes in places with more curvature. It also allowed the user to quickly check the mesh visually for any strange or missing sections. The target number of panels could be specified, and the algorithm would do its best to create that number of panels. Finally, because the vertices were exported, determining which panels are surface panels was easy to do later on.  
 
-This mesh was then deconstructed into vertices, faces and normals. The next section will explain how these were then used to construct panels. 
+This mesh was then deconstructed into vertices, faces, and normals. The next section will explain how these were then used to construct panels.  
 
-![image of mesh export chain](https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/refs/heads/main/Images/grasshopper_export.png)
+![image of mesh export chain](https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/refs/heads/main/Images/grasshopper_export.png)  
 
-The file format used was JSON, as this provided the flexability to store both parameters of the the model used as well as the lists of vertices, faces and normals. This was done using a python block with the following code:
+The file format used was JSON, as this provided the flexibility to store both the parameters of the model used as well as the lists of vertices, faces, and normals. This was done using a Python block with the following code:  
 
 ```python
 import datetime
@@ -179,25 +179,21 @@ import json
 n_panels = len(faces)
 timestamp = datetime.datetime.now().strftime("%m%d_%H-%M")
 filename = f"PS_hull_{timestamp}_{mode}_{n_panels}p.json"  
-data = {"ship_info":{"length": length,
-                        "slot_width": slot_width,
-                        "bow": {"width": bow_width,
-                                "radius_top": bow_radius_top,
-                                "radius_side": bow_radius_bottom,
-                                "length": bow_length},
-                        "draught": draught,
-                        "bilge_radius": bilge_radius},
-            "verts": vertices,
-            "faces": faces,
-            "normals": normals}
-
+data = {"ship_info": {"length": length,
+                      "slot_width": slot_width,
+                      "bow": {"width": bow_width,
+                              "radius_top": bow_radius_top,
+                              "radius_side": bow_radius_bottom,
+                              "length": bow_length},
+                      "draught": draught,
+                      "bilge_radius": bilge_radius},
+        "verts": vertices,
+        "faces": faces,
+        "normals": normals}
 
 if activate:
-    with open(directory+filename, mode="w+") as f:
+    with open(directory + filename, mode="w+") as f:
         json.dump(data, f)
-```
-
-This answers the first sub-question: "What format does the hull need to have to be exported to Julia?"
 """
 
 # ╔═╡ 694c01ed-ca88-4bc4-8f97-541be437b524
@@ -2570,11 +2566,11 @@ version = "1.4.1+2"
 """
 
 # ╔═╡ Cell order:
-# ╟─fa570bdd-3772-4750-980d-d75cf268ffcf
+# ╠═fa570bdd-3772-4750-980d-d75cf268ffcf
 # ╠═2adecdf9-45d8-4c18-8227-fb0a554ea3ca
-# ╟─5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
+# ╠═5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
 # ╟─fc46cecf-68dc-4f10-aad8-2ad952133e02
-# ╟─998e97f5-fc3d-4fc5-8400-fa6f3a42f050
+# ╠═998e97f5-fc3d-4fc5-8400-fa6f3a42f050
 # ╟─091882c9-eae3-41aa-b8eb-fb907f5c0860
 # ╟─6af1e9d6-07f6-4c40-a277-ab6421d669ae
 # ╟─694c01ed-ca88-4bc4-8f97-541be437b524
