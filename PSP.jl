@@ -4,11 +4,36 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ bc054f16-5c7a-4b8d-b9af-abe0e1965573
-# ╠═╡ disabled = true
-#=╠═╡
-using NeumannKelvin:kelvin,wavelike,nearfield
-  ╠═╡ =#
+# ╔═╡ 2bc4a9ed-2e7a-4eb9-8e1d-37939b665753
+using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, Plots, PlotlyBase,PlotlyKaleido, PlutoUI
+
+# ╔═╡ 480da64b-20da-4baa-b40a-4442a689f22a
+begin 
+	using NeumannKelvin:kelvin,wavelike,nearfield
+	# From wigley notebook
+	reflect(x::SVector;flip=SA[1,-1,1]) = x.*flip
+	reflect(p::NamedTuple;flip=SA[1,-1,1]) = (x=reflect(p.x;flip), 
+		n=reflect(p.n;flip), dA=p.dA, x₄=reflect.(p.x₄;flip), wl=p.wl)
+	
+	function NeumannKelvin.kelvin(ξ,α;Fn,max_z=-1/50);
+		ξ[3]> 0 && throw(DomainError(ξ[3],"Sources must be below z=0"));
+		x,y,z = (ξ-α)/Fn^2;
+		z = min(z,max_z/Fn^2); # limit z!! 💔
+		(nearfield(x,y,z)+wavelike(x,abs(y),z))/Fn^2;
+	end
+
+	∫contour(x,p;Fn) = kelvin(x,p.x .* SA[1,1,0];Fn)*p.n[1]*p.dA;
+	
+	function ∫surface(x,p;Fn,χ=true,dz=0);
+		(!χ || !p.wl) && return ∫kelvin(x,p;Fn,dz); # no waterline
+		∫kelvin(x,p;Fn,dz)+∫contour(x,p;Fn);
+	end
+	
+	function ∫surface_S₂(x,p;kwargs...);  # y-symmetric potentials
+	    ∫surface(x,p;kwargs...)+∫surface(x,reflect(p,flip=SA[1,-1,1]);kwargs...);
+	end
+end
+
 
 # ╔═╡ fa570bdd-3772-4750-980d-d75cf268ffcf
 md"""
@@ -33,6 +58,12 @@ The following sub-questions were investigated:
 The final goal of the study is to develop a method to improve the efficiency of the most time consuming part of potential flow simulation - the creation of the model [1]
 
 """
+
+# ╔═╡ 2adecdf9-45d8-4c18-8227-fb0a554ea3ca
+# ╠═╡ disabled = true
+#=╠═╡
+using NeumannKelvin, Markdown, Plots
+  ╠═╡ =#
 
 # ╔═╡ 5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
 md"""
@@ -146,7 +177,7 @@ To work around the issue of NURBS not working on this model, Grasshopper's Lunch
 
 This mesh was then deconstructed into vertices, faces and normals. The next section will explain how these were then used to construct panels. 
 
-[image of mesh export chain]
+![image of mesh export chain](https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/refs/heads/main/Images/grasshopper_export.png)
 
 The file format used was JSON, as this provided the flexability to store both parameters of the the model used as well as the lists of vertices, faces and normals. This was done using a python block with the following code:
 
@@ -178,81 +209,79 @@ if activate:
 This answers the first sub-question: "What format does the hull need to have to be exported to Julia?"
 """
 
+# ╔═╡ 694c01ed-ca88-4bc4-8f97-541be437b524
+md"""
+## Importing into Julia
+"""
+
 # ╔═╡ c7786892-73cf-4e23-bfe6-339feae6f4de
-begin
-	md"""
-	## Methodology
-	In order to perform a variance study, the hull form of the Pioneering Spirit needs to be described parametrically. This has been acchieved by defining the hull in Rhino, using a Grasshopper script. The combined use of grasshopper and Rhino allows for rapid definition of multiple hulls based on the geometric parameters that are to be varied for the purpose of this study. These hullforms are then be exported as NURBS data, which is used as input for the potential flow solver. (This way of working has been validated as a potential flow assignment last year, REF Rajan). The figure below provides an overview of the Rhino-Grasshopper hull definition.
-	
-	![]
-	(https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/a01588220c1a78ce20eb21a81b061a234e023fbe/Images/Rhino_grasshopper.png)
-	
-	For the purpose of this study, the following geometric parameters will be varied (see image below for parameter clarification):
-	
-	 > 1. **Slot width** 
-	 > 2. **Slot length** 
-	 > 3. **Bow width**
-	 > 4. **Horizonal bow radius**
-	 > 5. **Vertical bow radius**
-	 > 6. **Outer bilge keel**
-	 > 7. **Inner bilge keel**
+md"""
 
-	**     Top view          Side view          Front view**
-	
-	![]
-	(https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/refs/heads/main/Images/Dimensions_2.png)
+This section will describe the Julia code written to convert the exported JSON hull form into a potential flow solution. First the mesh has to be imported and panels have to be created. Then existing helper functions are modified to recognise the new method of determining the surface panels. 
 
-	The variance study will be performed by implementing the following steps:
+### Import mesh function
+The first function needed is one to read the JSON serialised hull data and convert it into a TypedTable of panels. The function does 4 things:
+- Reading of data from JSON and conversion from string to floating point or integers
+- Checking the number of panels to prevent out of memory problems
+- Creation of panels form vertices
+- Creation of a shape to overlay on plots
 
-	1. **Assess the importance of total vessel length** 
-	While the total vessel length is not a parameter that will be varied for the actual study, this step aims to reduce the total computation time. The hypothesis is that the wave height in the slot will not vary significantly if the total vessel size is reduced from 382m. While this step is likely introduce a slight modelling error, reducing the total vessel size will reduce the total computation time.
-	
-	 2. **Determine the speed range and the parameter variance range for all variables** 
-	Depending on the final vessel length, the speed range for the varience study is to be determined. This speed range is to be set to froude number 0 through 1 accroding to $\text{Fn} = \frac{v}{\sqrt{g * l}}$.
+"""
 
-	Furthermore, the range over which the geometric parameters (outlined above) are to be varried. The aim for these ranges is to vary the geometric parameters 50% above and below their real world value. The reasoning for this range is that the variance of the geometric parameters should be limited, as extreme variance in values are likely to intoduce trucation errors. (i.e. a bilge radius of 0.01m will likely not provide reliable results.)
+# ╔═╡ 2071ec6e-d91b-4760-a0e1-3148e1350896
+md"""
+### Create panels function
+The create panels function is used to construct a panel from 4 vertex points. The $x_4$ points are approximated by interpolating $\frac{1}{\sqrt{3}}$ of the way between the vertices and the centrepoint, creating a named tuple compatible with the NeumannKelvin package. An additional boolean term, ```wl``` is included indicating whether the panel is a waterline panel. This is determined by whether any of the vertices defining the panel have a z-coordinate of 0 or higher.
+"""
 
-	 3. **Compute the wave height for the full speed and parameter variance range**
-	This step entails the variance study itself, where the input paramters as determined above are to be entered into the solver.
-	
-	
-	 4. **Compute the varience in wave height caused by varying the geometric parameter**
-	In order to compare the impact of the different parameters, the varience in wave height caused by changing the geometric parameters is to be computed. 
-	
-	 5. **Rank the parameters based on descending varience in wave height**
-	Based on the varience in wave height as computed above, the parameters can be ranked accoring to which parameter has the biggest influence on the wave making characteristic of the slot.
 
-	**@Albert, laat ff weten wat je vindt van de methode die ik heb verzonnen. Ben sws nog ff van plan om aan Gabe te vragen of we een wetenschappelijke onderbouwing nodig hebben voor onze statistische methodiek. Heb ff kort gezocht in statistiek boeken, maar dat is best een studie opzich, en wellicht buiten de scope van het vak.**
+# ╔═╡ 7812bbc4-a0a9-42a0-a0ce-9da86ad380b7
+function createPanel(vertices::Array{Array{Float64, 1}, 1},
+					 normals::Array{Array{Float64, 1}, 1}, 
+					 faces::Array{Int64, 1});
 	
-	"""
+	face_vertices = [vertices[i+1] for i in faces];
+	face_normals = [normals[i+1] for i in faces];
+	centre = sum(face_vertices)/4
+	normal = sum(face_normals)
+	normal /= norm(normal)
+
+	(length(faces) < 4) && return nothing;
+	
+	wl_panel = false;
+	
+	if any([vertex[3]>-1/50 for vertex in face_vertices])
+		wl_panel=true
+	end
+	
+    # Calculating dA as two triangles
+	v1 = face_vertices[2] .- face_vertices[1];
+	v2 = face_vertices[3] .- face_vertices[1];
+	
+	v3 = face_vertices[3] .- face_vertices[1];
+	v4 = face_vertices[4] .- face_vertices[1];
+	
+	dA = 0.5 * norm(v1×v2) + 0.5 * norm(v3×v4);
+
+	# Generate the four Gauss points for 2×2 quadrature
+	ξ₁ = SA[-1/√3, 1/√3];
+	# Map to physical space
+	x₄ = ((ξ, η) -> SVector{3, Float64}([[f[i] for f in face_vertices]⋅[(1-ξ)*(1-η)/4, (1+ξ)*(1-η)/4, (1+ξ)*(1+η)/4, (1-ξ)*(1+η)/4] for i in range(1, length=3)])).(ξ₁, ξ₁');
+	
+	normal = SVector{3, Float64}(normal);
+	centre = SVector{3, Float64}(centre);
+	return (x=centre::SVector, n=normal::SVector ,dA = dA::Float64, x₄=x₄::SMatrix{2, 2}, wl=wl_panel::Bool);
 end
 
-# ╔═╡ ef64d57f-30e6-45dd-b598-65728d31b77b
-begin
-	md"""
-	## Code
-	Due to limitations in the NURBS.jl package, directly exporting the geometry generated by grasshopper is not possible. To solve this issue a different method had to be used. 
 
-	The problem was solved by creating a quadrangle mesh in grasshopper and then exporting the centres, normals and vertices of every face. 
 
-	The $x_4$ points are approximated by interpolating $\frac{1}{\sqrt{3}}$ of the way between the vertices and the centrepoint, creating a named tuple compatible with the NeumannKelvin package. 
-	"""
-end
+# ╔═╡ e717c9c8-dae4-48cf-ad4d-d50d94652a33
+md"""
+### PS Shape function
+This function simply creates a Plots shape based on the parameters of the model used, in order to overlay it on plots.
+"""
 
-# ╔═╡ aa0202ef-8dea-4c3f-a017-fe367efca375
-# ╠═╡ disabled = true
-#=╠═╡
-begin 
-	# From wigley notebook
-	reflect(x::SVector;flip=SA[1,-1,1]) = x.*flip
-	reflect(p::NamedTuple;flip=SA[1,-1,1]) = (x=reflect(p.x;flip), 
-		n=reflect(p.n;flip), dA=p.dA, x₄=reflect.(p.x₄;flip), wl=p.wl)
-end
-  ╠═╡ =#
-
-# ╔═╡ 62c1471f-5803-4b61-85fd-4a3bafde8210
-# ╠═╡ disabled = true
-#=╠═╡
+# ╔═╡ cb4c1429-bf61-4cb0-8c4a-11433073d8a9
 function psShape(ship_info::Dict{String, Any});
 		length = float(ship_info["length"]);
 		bow_length = float(ship_info["bow"]["length"]);
@@ -299,60 +328,8 @@ function psShape(ship_info::Dict{String, Any});
 	
 end
 
-  ╠═╡ =#
 
-# ╔═╡ f41c5399-987a-4122-b283-76f488eaabb7
-md"""### Main functions"""
-
-# ╔═╡ e64e3e12-d797-4fd0-b2e6-c371b8aebf82
-
-
-# ╔═╡ 1d5b75bc-9b23-473d-bc43-5d492c621d5d
-# ╠═╡ disabled = true
-#=╠═╡
-function createPanel(vertices::Array{Array{Float64, 1}, 1},
-					 normals::Array{Array{Float64, 1}, 1}, 
-					 faces::Array{Int64, 1});
-	
-	face_vertices = [vertices[i+1] for i in faces];
-	face_normals = [normals[i+1] for i in faces];
-	centre = sum(face_vertices)/4
-	normal = sum(face_normals)
-	normal /= norm(normal)
-
-	(length(faces) < 4) && return nothing;
-	
-	wl_panel = false;
-	
-	if any([vertex[3]>-1/50 for vertex in face_vertices])
-		wl_panel=true
-	end
-	
-    # Calculating dA as two triangles
-	v1 = face_vertices[2] .- face_vertices[1];
-	v2 = face_vertices[3] .- face_vertices[1];
-	
-	v3 = face_vertices[3] .- face_vertices[1];
-	v4 = face_vertices[4] .- face_vertices[1];
-	
-	dA = 0.5 * norm(v1×v2) + 0.5 * norm(v3×v4);
-
-	# Generate the four Gauss points for 2×2 quadrature
-	ξ₁ = SA[-1/√3, 1/√3];
-	# Map to physical space
-	x₄ = ((ξ, η) -> SVector{3, Float64}([[f[i] for f in face_vertices]⋅[(1-ξ)*(1-η)/4, (1+ξ)*(1-η)/4, (1+ξ)*(1+η)/4, (1-ξ)*(1+η)/4] for i in range(1, length=3)])).(ξ₁, ξ₁');
-	
-	normal = SVector{3, Float64}(normal);
-	centre = SVector{3, Float64}(centre);
-	return (x=centre::SVector, n=normal::SVector ,dA = dA::Float64, x₄=x₄::SMatrix{2, 2}, wl=wl_panel::Bool);
-end
-
-
-  ╠═╡ =#
-
-# ╔═╡ 520977d9-d16c-4dc1-83e2-6d6bd058662c
-# ╠═╡ disabled = true
-#=╠═╡
+# ╔═╡ 202dea43-7c21-4c75-b3ae-6e351a384bb7
 function importMesh(filename::String);
 	import_data:: Dict{String, Any} = JSON.parsefile(filename);
 	toArray(str:: String) = parse.(Float64, split(strip(str, ['{', '}']), ","));
@@ -381,26 +358,51 @@ function importMesh(filename::String);
 	return panels, shape, total_length, h_mean;
 
 end
-  ╠═╡ =#
 
-# ╔═╡ e513f638-a083-4bfb-aa3e-6450d37001b5
-md"""The following functions are taken from the notebooks written in class"""
+# ╔═╡ 1e1562d3-e70b-4db8-84df-1587b64278cb
 
 
-# ╔═╡ 5fa06031-f734-42e7-95bf-fd0daf506687
+# ╔═╡ e4538923-8dde-46b3-8931-9e8c63acffff
 md"""
-The surface potential has been adjusted to work with the definition of the waterline being all surfaces located at ``z=\frac{-1}{50}``
+### Functions from class notebooks
+The following functions have been taken from the Julia notebooks in class and adapted to work with this project. The primary change is the incorporation of the extra ```wl``` term to determine surface panels.
 """
 
-# ╔═╡ 264da090-b49b-4203-903c-a2fe81f165aa
-# ╠═╡ disabled = true
+# ╔═╡ cc268f85-1c3d-4977-9c86-0d7de56f6060
+md"""
+The solve_sources function has been created to calculate the strengths of the sources based on the code from class. The keyword argument ```demi``` allows the user to specify whether the input panels represent a demi hull or a full hull model.  The verbose statement is used for debugging during development.
+
+"""
+
+# ╔═╡ cbe65c11-2ee2-4439-8d47-efa8fa9eccdc
 #=╠═╡
-data_folder = joinpath(@__DIR__, "..", "src", "data");
+function solve_sources(panels; demi=false, Fn=0.2, verbose=false)
+	if demi
+		ps = (ϕ=∫surface_S₂,Fn=Fn)
+	else
+		ps = (ϕ=∫surface,Fn=Fn)# NamedTuple of keyword-arguments
+	end
+	A = influence(panels;ps...)
+	
+	if verbose
+		A_diag = [A[i, i] for i in axes(A, 1)]
+		print("Min A: $(minimum(A_diag)), Mean A: $(sum(A_diag)/length(A_diag)), Max A: $(maximum(A_diag))")
+	end
+	
+	b = first.(panels.n)
+	q = A\b # solve for densities
+	return q, ps, A
+end;
   ╠═╡ =#
+
+# ╔═╡ 223f5aa4-fa41-4414-94b3-6b125e9091e0
+md"""
+Using these functions the second sub-question is answered: "How can the hull be converted to the NeumannKelvin packages required input format?"
+"""
 
 # ╔═╡ 7e195849-db71-401b-8c3c-68c712135390
 md"""
-#### Importing a custom mesh
+## Importing a custom mesh
 """
 
 # ╔═╡ 3006e2d4-c8b9-48a3-9857-5ab15b59238e
@@ -434,6 +436,12 @@ end
 # ╔═╡ 8546b716-93fc-4372-81be-f72566f8ad9d
 md"""Using the code from class the source strengths can be solved"""
 
+# ╔═╡ 277b39c7-d1a6-44dc-ab94-0df434f45ebc
+# ╠═╡ disabled = true
+#=╠═╡
+
+  ╠═╡ =#
+
 # ╔═╡ f34a6fa6-2d59-41ad-93fd-e431c52357c9
 # ╠═╡ disabled = true
 #=╠═╡
@@ -446,6 +454,12 @@ The corresponding velocity is $(round(1.944 * Fn1√(9.81*length_ps); digits=2))
 """
   ╠═╡ =#
 
+# ╔═╡ 860dc015-a6f8-44e8-81d4-3c3391cef7dd
+# ╠═╡ disabled = true
+#=╠═╡
+q, ps, A = solve_sources(panels;Fn=Fn1);
+  ╠═╡ =#
+
 # ╔═╡ 301d6aed-a9f6-4a3c-9a41-0a4f693e1355
 # ╠═╡ disabled = true
 #=╠═╡
@@ -456,6 +470,25 @@ begin
 	plot? $(@bind plot_contour_1 CheckBox(default=false))
 	"""
 end
+  ╠═╡ =#
+
+# ╔═╡ 9998b3e0-a799-42a5-889a-91908d1268dd
+# ╠═╡ disabled = true
+#=╠═╡
+begin
+if plot_contour_1
+    plotly()
+    Plots.contourf(-2:h_mean:2,-2:h_mean:2, (x,y)->2ζ(x,y,q,panels;ps...),
+        c=:balance, aspect_ratio=:equal);
+    Plots.plot!(shape, c=:blue,legend=nothing)
+end
+end
+  ╠═╡ =#
+
+# ╔═╡ 744044c4-0ca8-400c-b049-71e16ef052d9
+# ╠═╡ disabled = true
+#=╠═╡
+added_mass(panels; ps)
   ╠═╡ =#
 
 # ╔═╡ 9fef423f-6f85-48ab-86fa-7687af6ce184
@@ -532,45 +565,29 @@ begin
 end
   ╠═╡ =#
 
-# ╔═╡ 277b39c7-d1a6-44dc-ab94-0df434f45ebc
-# ╠═╡ disabled = true
-#=╠═╡
-function solve_sources(panels; demi=false, Fn=0.2, verbose=false)
-	if demi
-		ps = (ϕ=∫surface_S₂,Fn=Fn)
-	else
-		ps = (ϕ=∫surface,Fn=Fn)# NamedTuple of keyword-arguments
-	end
-	A = influence(panels;ps...)
-	
-	if verbose
-		A_diag = [A[i, i] for i in axes(A, 1)]
-		print("Min A: $(minimum(A_diag)), Mean A: $(sum(A_diag)/length(A_diag)), Max A: $(maximum(A_diag))")
-	end
-	
-	b = first.(panels.n)
-	q = A\b # solve for densities
-	return q, ps, A
-end;
-  ╠═╡ =#
-
-# ╔═╡ 9998b3e0-a799-42a5-889a-91908d1268dd
+# ╔═╡ 9a2dc360-058b-4ba9-a477-bad65e2d2dae
 # ╠═╡ disabled = true
 #=╠═╡
 begin
-if plot_contour_1
-    plotly()
-    Plots.contourf(-2:h_mean:2,-2:h_mean:2, (x,y)->2ζ(x,y,q,panels;ps...),
-        c=:balance, aspect_ratio=:equal);
-    Plots.plot!(shape, c=:blue,legend=nothing)
+	Fnq = 0.2 	# Froude number 0.2 taken consistent across all models
+	### CODE BELOW TAKEN DIRECTLY FROM WIGLEY.JL ###
+	function NeumannKelvin.kelvin(ξ,α;Fn,max_z=-1/50)
+		ξ[3]> 0 && throw(DomainError(ξ[3],"Sources must be below z=0"))
+		x,y,z = (ξ-α)/Fn^2
+		z = min(z,max_z/Fn^2) # limit z!! 💔
+		(nearfield(x,y,z)+wavelike(x,abs(y),z))/Fn^2
+	end
+	
+	∫contour(x,p;Fn) = kelvin(x,p.x .* SA[1,1,0];Fn)*p.n[1]*p.dA
+	function ∫surface(x,p;Fn,χ=true,dz=0)
+		(!χ || p.x[3]^2 > p.dA) && return ∫kelvin(x,p;Fn,dz) # no waterline
+		∫kelvin(x,p;Fn,dz)+∫contour(x,p;Fn)
+	end
+	
+	ps = (ϕ=∫surface,Fn=Fnq)        # NamedTuple of keyword-arguments
+	q = influence(doublehull;ps...)\first.(doublehull.n); # solve for densities
+	### CODE ABOVE TAKEN DIRECTLY FROM WIGLEY.JL ###
 end
-end
-  ╠═╡ =#
-
-# ╔═╡ 744044c4-0ca8-400c-b049-71e16ef052d9
-# ╠═╡ disabled = true
-#=╠═╡
-added_mass(panels; ps)
   ╠═╡ =#
 
 # ╔═╡ 1c89e4be-6cb6-4c0b-a3b4-b48e07617470
@@ -797,6 +814,16 @@ begin
 	nothing
 end
 
+# ╔═╡ 073d70ef-da1e-47dd-b0e5-a532b936c883
+md"""
+## The study
+
+ 1. **The importance of total vessel length** 
+
+ 2. **Computing the speed range and the parameter variance range for all variables**
+Based on the vessel length computed above, the speed range over which each hull geometry is to be evaluated becomes:
+"""
+
 # ╔═╡ c45ce64f-2ae1-4120-adad-24c1f843498c
 # ╠═╡ disabled = true
 #=╠═╡
@@ -809,16 +836,6 @@ begin
 	df_speed = DataFrame(Value = value, Range = speed_ranges)
 end
   ╠═╡ =#
-
-# ╔═╡ 073d70ef-da1e-47dd-b0e5-a532b936c883
-md"""
-## The study
-
- 1. **The importance of total vessel length** 
-
- 2. **Computing the speed range and the parameter variance range for all variables**
-Based on the vessel length computed above, the speed range over which each hull geometry is to be evaluated becomes:
-"""
 
 # ╔═╡ 39c8e8f6-6852-4f3e-84b3-72e8c4e3db11
 md"""
@@ -870,82 +887,11 @@ begin
 	@eval Main.PlutoRunner format_output(x::AbstractArray{Float64}; context = default_iocontext) = format_output_default(round.(x; digits = 3), context)
 end;
 
-# ╔═╡ 2adecdf9-45d8-4c18-8227-fb0a554ea3ca
-# ╠═╡ disabled = true
-#=╠═╡
-using NeumannKelvin, Markdown, Plots
-  ╠═╡ =#
-
-# ╔═╡ 860dc015-a6f8-44e8-81d4-3c3391cef7dd
-# ╠═╡ disabled = true
-#=╠═╡
-q, ps, A = solve_sources(panels;Fn=Fn1);
-  ╠═╡ =#
-
-# ╔═╡ 40a64ec4-cdaa-497d-9283-c3c1da062d58
-# ╠═╡ disabled = true
-#=╠═╡
-function NeumannKelvin.kelvin(ξ,α;Fn,max_z=-1/50);
-	ξ[3]> 0 && throw(DomainError(ξ[3],"Sources must be below z=0"));
-	x,y,z = (ξ-α)/Fn^2;
-	z = min(z,max_z/Fn^2); # limit z!! 💔
-	(nearfield(x,y,z)+wavelike(x,abs(y),z))/Fn^2;
-end
-  ╠═╡ =#
-
-# ╔═╡ 98e84ada-af82-4715-b894-6a9e1153ebb8
-# ╠═╡ disabled = true
-#=╠═╡
-begin
-	∫contour(x,p;Fn) = kelvin(x,p.x .* SA[1,1,0];Fn)*p.n[1]*p.dA;
-	function ∫surface(x,p;Fn,χ=true,dz=0);
-		(!χ || !p.wl) && return ∫kelvin(x,p;Fn,dz); # no waterline
-		∫kelvin(x,p;Fn,dz)+∫contour(x,p;Fn);
-	end
-	function ∫surface_S₂(x,p;kwargs...);  # y-symmetric potentials
-	    ∫surface(x,p;kwargs...)+∫surface(x,reflect(p,flip=SA[1,-1,1]);kwargs...);
-	end
-end
-  ╠═╡ =#
-
-# ╔═╡ adc7fdd3-b339-4573-9717-34d7d4ac0324
-# ╠═╡ disabled = true
-#=╠═╡
-using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, Plots, PlotlyBase,PlotlyKaleido, PlutoUI
-  ╠═╡ =#
-
-# ╔═╡ 9a2dc360-058b-4ba9-a477-bad65e2d2dae
-# ╠═╡ disabled = true
-#=╠═╡
-begin
-	Fnq = 0.2 	# Froude number 0.2 taken consistent across all models
-	### CODE BELOW TAKEN DIRECTLY FROM WIGLEY.JL ###
-	function NeumannKelvin.kelvin(ξ,α;Fn,max_z=-1/50)
-		ξ[3]> 0 && throw(DomainError(ξ[3],"Sources must be below z=0"))
-		x,y,z = (ξ-α)/Fn^2
-		z = min(z,max_z/Fn^2) # limit z!! 💔
-		(nearfield(x,y,z)+wavelike(x,abs(y),z))/Fn^2
-	end
-	
-	∫contour(x,p;Fn) = kelvin(x,p.x .* SA[1,1,0];Fn)*p.n[1]*p.dA
-	function ∫surface(x,p;Fn,χ=true,dz=0)
-		(!χ || p.x[3]^2 > p.dA) && return ∫kelvin(x,p;Fn,dz) # no waterline
-		∫kelvin(x,p;Fn,dz)+∫contour(x,p;Fn)
-	end
-	
-	ps = (ϕ=∫surface,Fn=Fnq)        # NamedTuple of keyword-arguments
-	q = influence(doublehull;ps...)\first.(doublehull.n); # solve for densities
-	### CODE ABOVE TAKEN DIRECTLY FROM WIGLEY.JL ###
-end
-  ╠═╡ =#
-
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
-DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 NeumannKelvin = "7f078b06-e5c4-4cf8-bb56-b92882a0ad03"
 PlotlyBase = "a03496cd-edff-5a9b-9e67-9cda94a718b5"
 PlotlyKaleido = "f2990250-8cf9-495f-b13a-cce12b45703c"
@@ -954,7 +900,6 @@ PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-DataFrames = "~1.7.0"
 JSON = "~0.21.4"
 NeumannKelvin = "~0.5.1"
 PlotlyBase = "~0.8.20"
@@ -970,7 +915,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.3"
 manifest_format = "2.0"
-project_hash = "4103bb7c58447756354e1d4ceb582962036115f5"
+project_hash = "67698398d18742366ad0ab53c1e6fa1475bdeb2f"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -1200,21 +1145,10 @@ git-tree-sha1 = "439e35b0b36e2e5881738abc8857bd92ad6ff9a8"
 uuid = "d38c429a-6771-53c6-b99e-75d170b6e991"
 version = "0.6.3"
 
-[[deps.Crayons]]
-git-tree-sha1 = "249fe38abf76d48563e2f4556bebd215aa317e15"
-uuid = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
-version = "4.1.1"
-
 [[deps.DataAPI]]
 git-tree-sha1 = "abe83f3a2f1b857aac70ef8b269080af17764bbe"
 uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
 version = "1.16.0"
-
-[[deps.DataFrames]]
-deps = ["Compat", "DataAPI", "DataStructures", "Future", "InlineStrings", "InvertedIndices", "IteratorInterfaceExtensions", "LinearAlgebra", "Markdown", "Missings", "PooledArrays", "PrecompileTools", "PrettyTables", "Printf", "Random", "Reexport", "SentinelArrays", "SortingAlgorithms", "Statistics", "TableTraits", "Tables", "Unicode"]
-git-tree-sha1 = "fb61b4812c49343d7ef0b533ba982c46021938a6"
-uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-version = "1.7.0"
 
 [[deps.DataStructures]]
 deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
@@ -1466,19 +1400,6 @@ git-tree-sha1 = "4da0f88e9a39111c2fa3add390ab15f3a44f3ca3"
 uuid = "22cec73e-a1b8-11e9-2c92-598750a2cf9c"
 version = "0.3.1"
 
-[[deps.InlineStrings]]
-git-tree-sha1 = "6a9fde685a7ac1eb3495f8e812c5a7c3711c2d5e"
-uuid = "842dd82b-1e85-43dc-bf29-5d0ee9dffc48"
-version = "1.4.3"
-
-    [deps.InlineStrings.extensions]
-    ArrowTypesExt = "ArrowTypes"
-    ParsersExt = "Parsers"
-
-    [deps.InlineStrings.weakdeps]
-    ArrowTypes = "31f734f8-188a-4ce0-8406-c8a06bd891cd"
-    Parsers = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-
 [[deps.IntelOpenMP_jll]]
 deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl"]
 git-tree-sha1 = "0f14a5456bdc6b9731a5682f439a672750a09e48"
@@ -1499,11 +1420,6 @@ weakdeps = ["Dates", "Test"]
     [deps.InverseFunctions.extensions]
     InverseFunctionsDatesExt = "Dates"
     InverseFunctionsTestExt = "Test"
-
-[[deps.InvertedIndices]]
-git-tree-sha1 = "6da3c4316095de0f5ee2ebd875df8721e7e0bdbe"
-uuid = "41ab1584-1d38-5bbf-9106-f11c6c58b48f"
-version = "1.3.1"
 
 [[deps.IrrationalConstants]]
 git-tree-sha1 = "e2222959fbc6c19554dc15174c81bf7bf3aa691c"
@@ -1921,12 +1837,6 @@ git-tree-sha1 = "5152abbdab6488d5eec6a01029ca6697dff4ec8f"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 version = "0.7.23"
 
-[[deps.PooledArrays]]
-deps = ["DataAPI", "Future"]
-git-tree-sha1 = "36d8b4b899628fb92c2749eb488d884a926614d3"
-uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
-version = "1.4.3"
-
 [[deps.PrecompileTools]]
 deps = ["Preferences"]
 git-tree-sha1 = "5aa36f7049a63a1528fe8f7c3f2113413ffd4e1f"
@@ -1938,12 +1848,6 @@ deps = ["TOML"]
 git-tree-sha1 = "9306f6085165d270f7e3db02af26a400d580f5c6"
 uuid = "21216c6a-2e73-6563-6e65-726566657250"
 version = "1.4.3"
-
-[[deps.PrettyTables]]
-deps = ["Crayons", "LaTeXStrings", "Markdown", "PrecompileTools", "Printf", "Reexport", "StringManipulation", "Tables"]
-git-tree-sha1 = "1101cd475833706e4d0e7b122218257178f48f34"
-uuid = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
-version = "2.4.0"
 
 [[deps.Printf]]
 deps = ["Unicode"]
@@ -2066,12 +1970,6 @@ git-tree-sha1 = "3bac05bc7e74a75fd9cba4295cde4045d9fe2386"
 uuid = "6c6a2e73-6563-6170-7368-637461726353"
 version = "1.2.1"
 
-[[deps.SentinelArrays]]
-deps = ["Dates", "Random"]
-git-tree-sha1 = "712fb0231ee6f9120e005ccd56297abbc053e7e0"
-uuid = "91c51154-3ec4-41a3-a24f-3f23e20d615c"
-version = "1.4.8"
-
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 version = "1.11.0"
@@ -2173,12 +2071,6 @@ deps = ["AliasTables", "DataAPI", "DataStructures", "LinearAlgebra", "LogExpFunc
 git-tree-sha1 = "29321314c920c26684834965ec2ce0dacc9cf8e5"
 uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 version = "0.34.4"
-
-[[deps.StringManipulation]]
-deps = ["PrecompileTools"]
-git-tree-sha1 = "725421ae8e530ec29bcbdddbe91ff8053421d023"
-uuid = "892a3eda-7b42-436c-8928-eab12a02cf0e"
-version = "0.4.1"
 
 [[deps.StyledStrings]]
 uuid = "f489334b-da3d-4c2e-b8f0-e476e12c162b"
@@ -2623,22 +2515,21 @@ version = "1.4.1+2"
 # ╟─fc46cecf-68dc-4f10-aad8-2ad952133e02
 # ╟─998e97f5-fc3d-4fc5-8400-fa6f3a42f050
 # ╟─091882c9-eae3-41aa-b8eb-fb907f5c0860
-# ╠═6af1e9d6-07f6-4c40-a277-ab6421d669ae
-# ╠═c7786892-73cf-4e23-bfe6-339feae6f4de
-# ╟─ef64d57f-30e6-45dd-b598-65728d31b77b
-# ╠═adc7fdd3-b339-4573-9717-34d7d4ac0324
-# ╠═aa0202ef-8dea-4c3f-a017-fe367efca375
-# ╟─62c1471f-5803-4b61-85fd-4a3bafde8210
-# ╟─f41c5399-987a-4122-b283-76f488eaabb7
-# ╠═e64e3e12-d797-4fd0-b2e6-c371b8aebf82
-# ╠═520977d9-d16c-4dc1-83e2-6d6bd058662c
-# ╠═1d5b75bc-9b23-473d-bc43-5d492c621d5d
-# ╠═bc054f16-5c7a-4b8d-b9af-abe0e1965573
-# ╟─e513f638-a083-4bfb-aa3e-6450d37001b5
-# ╠═40a64ec4-cdaa-497d-9283-c3c1da062d58
-# ╟─5fa06031-f734-42e7-95bf-fd0daf506687
-# ╠═98e84ada-af82-4715-b894-6a9e1153ebb8
-# ╠═264da090-b49b-4203-903c-a2fe81f165aa
+# ╟─6af1e9d6-07f6-4c40-a277-ab6421d669ae
+# ╟─694c01ed-ca88-4bc4-8f97-541be437b524
+# ╠═2bc4a9ed-2e7a-4eb9-8e1d-37939b665753
+# ╟─c7786892-73cf-4e23-bfe6-339feae6f4de
+# ╠═202dea43-7c21-4c75-b3ae-6e351a384bb7
+# ╟─2071ec6e-d91b-4760-a0e1-3148e1350896
+# ╠═7812bbc4-a0a9-42a0-a0ce-9da86ad380b7
+# ╠═e717c9c8-dae4-48cf-ad4d-d50d94652a33
+# ╠═cb4c1429-bf61-4cb0-8c4a-11433073d8a9
+# ╠═1e1562d3-e70b-4db8-84df-1587b64278cb
+# ╟─e4538923-8dde-46b3-8931-9e8c63acffff
+# ╠═480da64b-20da-4baa-b40a-4442a689f22a
+# ╟─cc268f85-1c3d-4977-9c86-0d7de56f6060
+# ╠═cbe65c11-2ee2-4439-8d47-efa8fa9eccdc
+# ╟─223f5aa4-fa41-4414-94b3-6b125e9091e0
 # ╟─7e195849-db71-401b-8c3c-68c712135390
 # ╠═3006e2d4-c8b9-48a3-9857-5ab15b59238e
 # ╠═a0c223be-1c3e-4fc2-aa5b-e6b6e077eb40
