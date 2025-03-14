@@ -4,21 +4,6 @@
 using Markdown
 using InteractiveUtils
 
-# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
-macro bind(def, element)
-    #! format: off
-    quote
-        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
-        local el = $(esc(element))
-        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
-        el
-    end
-    #! format: on
-end
-
-# ╔═╡ 2bc4a9ed-2e7a-4eb9-8e1d-37939b665753
-using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, Plots, PlotlyBase,PlotlyKaleido, PlutoUI
-
 # ╔═╡ 480da64b-20da-4baa-b40a-4442a689f22a
 begin 
 	using NeumannKelvin:kelvin,wavelike,nearfield
@@ -70,12 +55,6 @@ The following sub-questions were investigated:
 The final goal of the study is to develop a method to improve the efficiency of the most time consuming part of potential flow simulation - the creation of the model [1]
 
 """
-
-# ╔═╡ 2adecdf9-45d8-4c18-8227-fb0a554ea3ca
-# ╠═╡ disabled = true
-#=╠═╡
-using NeumannKelvin, Markdown, Plots
-  ╠═╡ =#
 
 # ╔═╡ 5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
 md"""
@@ -262,7 +241,7 @@ function createPanel(vertices::Array{Array{Float64, 1}, 1},
 	
 	wl_panel = false;
 	
-	if any([vertex[3]>=0 for vertex in face_vertices])
+	if any([vertex[3]>-1/50 for vertex in face_vertices])
 		wl_panel=true
 	end
 	
@@ -410,61 +389,37 @@ Using these functions the second sub-question is answered: "How can the hull be 
 # ╔═╡ 7e195849-db71-401b-8c3c-68c712135390
 md"""
 ## Importing a custom mesh
-
-With all the necessary functions defined, models created with the Grasshopper tool can now be imported. As a demonstration of the method two hull forms will be imported and solved for, one a full hull and the other a demi-hull.
-
-The size of the models is 1x1m and is they are made with the following parameters:
-
-| Parameter | Value | 
-| :--------- | -----: |
-| Hull length | 0.5m |
-| Slot width | 0.5m |
-| Bow width | 0.25m | 
-| Bow length | 0.5m | 
-| Draught | 0.25m | 
-| Bow radius (top) | 83% |
-| Bow radius (side) | 53% |
-| Bilge radius | 23% |
-
-The radii are defined as percentages of the bow width (Top radius) and draught (Side and bilge radius)
-
-"""
-
-# ╔═╡ 41490feb-1eaf-4273-bbe2-7c7f8b1512d4
-md"""
-### Importing panels
 """
 
 # ╔═╡ 3006e2d4-c8b9-48a3-9857-5ab15b59238e
-pᵈ, sᵈ, lᵈ, hᵈₘ = importMesh(joinpath(@__DIR__, "data", "small_ps", "PS_hull_0312_21-05_double_small_fine.json"));
-
-# ╔═╡ 580e10df-bdea-4ad7-aa99-facacc160e90
-pʰ, sʰ, lʰ, hʰₘ = importMesh(joinpath(@__DIR__, "data", "small_ps", "PS_hull_0312_22-18_half_small_fine.json"));
+# ╠═╡ disabled = true
+#=╠═╡
+panels, shape, length_ps, h_mean = importMesh(joinpath(data_folder, "small_ps/PS_hull_0312_21-05_double_small_fine.json"));
+  ╠═╡ =#
 
 # ╔═╡ a0c223be-1c3e-4fc2-aa5b-e6b6e077eb40
+# ╠═╡ disabled = true
+#=╠═╡
 md"""
 Plot panels scatterplot? For performance this is optional, and only 1 every 5 panels is plotted.
 
 $(@bind plot_panels CheckBox(default=false))
 """
+  ╠═╡ =#
 
 # ╔═╡ b2203672-3079-49ec-a7f4-e09804136b86
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 	if plot_panels
-		plotly()
-		plot(Plots.scatter3d(
-			eachrow(stack(pᵈ.x[1:5:end]))...,label=nothing,
-			marker_z=@.(pᵈ.wl[1:5:end]),
+		Plots.scatter3d(
+			eachrow(stack(panels.x))...,label=nothing,
+			marker_z=@.(panels.wl),
 			c=palette([:grey,:green], 2),
-			title = "PS hull with waterline panels marked", aspect_ratio=1.0),
-			Plots.scatter3d(
-			eachrow(stack(pʰ.x[1:5:end]))...,label=nothing,
-			marker_z=@.(pʰ.wl[1:5:end]),
-			c=palette([:grey,:green], 2),
-			title = "PS hull with waterline panels marked", aspect_ratio=1.0),
-			layout=(1,2),size=(600,300))
+			title = "PS hull with waterline panels marked", aspect_ratio=:equal)
 	end
 end
+  ╠═╡ =#
 
 # ╔═╡ 8546b716-93fc-4372-81be-f72566f8ad9d
 md"""
@@ -531,11 +486,10 @@ The code block below shows the definition of two wigley hull's, that have an off
 """
 
 # ╔═╡ 110b514a-6666-48f6-ba52-4b188caf9ca3
-# ╠═╡ disabled = true
-#=╠═╡
+
 begin
 	B = 0.2
-	offset = 5/2
+	offset = 4
 	L = 1
 
 	# drawing the double hull in a plot
@@ -575,11 +529,9 @@ begin
 		return vcat(panels_l_1, panels_r_1, panels_l_2, panels_r_2)
 	end
 end
-  ╠═╡ =#
 
 # ╔═╡ 3079d163-b5b0-4ad8-aaeb-0c32fe721f21
-# ╠═╡ disabled = true
-#=╠═╡
+
 begin
 	h = 1/32
 	doublehull = wigley_double_hull(h,h);
@@ -591,11 +543,10 @@ begin
 	c=palette([:grey,:green], 2),
 	title = "Double Wigley hull with waterline panels marked")
 end
-  ╠═╡ =#
+
 
 # ╔═╡ 9a2dc360-058b-4ba9-a477-bad65e2d2dae
-# ╠═╡ disabled = true
-#=╠═╡
+
 begin
 	Fnq = 0.2 	# Froude number 0.2 taken consistent across all models
 	
@@ -608,25 +559,23 @@ begin
 	q_1 = influence(doublehull;ps_1...)\first.(doublehull.n); # solve for densities
 	nothing
 end
-  ╠═╡ =#
+
 
 # ╔═╡ 1c89e4be-6cb6-4c0b-a3b4-b48e07617470
-# ╠═╡ disabled = true
-#=╠═╡
+
 begin
 	plotly()
-	Plots.contourf(-1.5:h:1,-1:h:1,(x,y)->ζ(x,y,q_1,doublehull;ps_1...),
+	Plots.contourf(-2:h:1,-1.2:h:1.2,(x,y)->ζ(x,y,q_1,doublehull;ps_1...),
 		c=:balance,aspect_ratio=:equal,clims=(-0.3,0.3));Plots.plot!(
 		wigley_shape_l_1(h),c=:black,legend=nothing);Plots.plot!(
 		wigley_shape_r_1(h),c=:black,legend=nothing);Plots.plot!(
 		wigley_shape_l_2(h),c=:black,legend=nothing);Plots.plot!(
 		wigley_shape_r_2(h),c=:black,legend=nothing)
 end
-  ╠═╡ =#
+
 
 # ╔═╡ e924cf54-c392-4728-bc0f-89b3722f9b5a
-# ╠═╡ disabled = true
-#=╠═╡
+
 begin
 	reflect_jul(x::SVector;flip=SA[1,-1,1]) = x.*flip
 	reflect_jul(p::NamedTuple;flip=SA[1,-1,1]) = (x=reflect(p.x;flip), 
@@ -655,11 +604,9 @@ begin
 	
 	nothing
 end
-  ╠═╡ =#
+
 
 # ╔═╡ 461ee2cd-e445-4503-9cc2-0fa43d874464
-# ╠═╡ disabled = true
-#=╠═╡
 begin
 	plotly()
 	Plots.contourf(-1.5:h:1,-0.8:h:0.8,(x,y)->ζ(x,y,q_2,demihull;ps_2...),
@@ -667,7 +614,7 @@ begin
 		wigley_shape_l(h),c=:black,legend=nothing);Plots.plot!(
 		wigley_shape_r(h),c=:black,legend=nothing, title="Wave height [m] at Froude number = $Fnq")
 end
-  ╠═╡ =#
+
 
 # ╔═╡ 68af513d-c457-49f8-ba7c-d6ca7c142975
 md"""
@@ -679,8 +626,7 @@ The hull as defined above is then used to define a hull shape that resembles the
 """
 
 # ╔═╡ f16e3fb3-7316-4a6d-a35d-7751fed391a7
-# ╠═╡ disabled = true
-#=╠═╡
+
 begin
 	slot_len = 0.3 	# Note slot length should be strictly larger then vessel len
 
@@ -743,11 +689,10 @@ begin
 		return vcat(panels_l_1, panels_r_1, panels_l_2, panels_r_2, panels_backplate, panels_bottomplate, front_plate)
 	end
 end
-  ╠═╡ =#
+
 
 # ╔═╡ 08674063-c98a-403e-bf93-354da6e26a34
-# ╠═╡ disabled = true
-#=╠═╡
+
 begin
 	plotly()
 	hull_slot = wigley_hull_slot(h,h);
@@ -758,26 +703,28 @@ begin
 	c=palette([:grey,:green], 2),
 	title = "Slotted hull with waterline panels marked")
 end
-  ╠═╡ =#
+
 
 # ╔═╡ 2652de72-75c0-4737-abea-e83c18ef73a8
-# ╠═╡ disabled = true
-#=╠═╡
+
 begin
 	ps_3 = (ϕ=∫surface_jul,Fn=Fnq)        # NamedTuple of keyword-arguments
 	q_3 = influence(hull_slot;ps_3...)\first.(hull_slot.n) # solve for densities
 	plotly()
-	Plots.contourf(-1.5:h:1,-0.8:h:0.8,(x,y)->ζ(x,y,q_3,hull_slot;ps_3...),
+	Plots.contourf(-2:h:1,-1.2:h:1.2,(x,y)->ζ(x,y,q_3,hull_slot;ps_3...),
 		c=:balance,aspect_ratio=:equal,clims=(-3,3));Plots.plot!(wigley_shape_l_1(h),c=:black,legend=nothing);Plots.plot!(	wigley_shape_r_1(h),c=:black,legend=nothing);Plots.plot!(	wigley_shape_l_2(h),c=:black,legend=nothing);Plots.plot!(	wigley_shape_r_2(h),c=:black,legend=nothing);Plots.plot!(Plots.Shape(x_coords, y_coords), aspect_ratio=:equal, lw=2, color=:black,title = "Wave height [m] at Froude number = $Fnq")
 end
-  ╠═╡ =#
+
 
 # ╔═╡ 5e4d5334-46b2-4935-8f55-27b06a6d1cc5
 md"""
 The plot above depicts the wave patern caused by the slotted wigley hull sailing at Fn = 0.2. The plot shows that the introduction of the slot causes a bow wave in front of the vertical section of the slot, which intuitively makes sense. However, it can also be noted that the one meter long vessel is inducing a wake with a wave height north of two meters. For the real world version of the vessel, this would correspond to wake waves of 800m amplitude. This is considered physically impossible, leading to the conclusion that the model above is not clearly depicting reality. This can be contributed to one of two errors:
 
 ##### Modelling error #####
-The potential flow solver does not take viscous damping into account. Since the shape of the vessel is quite aggressive (i.e. vertical aft wall, vertical slot wall), with a lot of near 90 degree angles, it is likely that the real world flow would experience high velocties in these areas. These high velocities would lead to high viscous damping in the real world scenrio, which cannot be modelled in the potential flow solver.
+1. The potential flow solver does not take viscous effects into account. Since the shape of the vessel is quite aggressive it is likely that the real world flow would experience high velocties in these areas. These high velocities would lead to viscous damping in the real world scenrio, which cannot be modelled in the potential flow solver.
+
+2. The model contains 90 degree angles in various places. These angles could lead to singularities in the potential, leading to non-realistic results. This source of error could be validated, and potentially omitted, by creating a model with curved edges rather than 90 degree angels. Due to time constraints, this validation is not performed in this study.
+
 
 ##### Human error #####
 It could be that there is an error in the geometry definition, leading to an incorrect solution. This can be checked by comparing the solution of the slotted wigley hull with the solution for the NURBS output.
@@ -879,72 +826,7 @@ begin
 end
   ╠═╡ =#
 
-# ╔═╡ b00ddd51-7a31-4809-9830-05e76e2ff0f3
-begin
-	par_range(ref) = vcat([ref * (1 - p) for p in 0.1:0.1:0.5][end:-1:1], ref, [ref * (1 + p) for p in 0.1:0.1:0.5])
-	slot_width = par_range(59)		#echte waarde
-	slot_length = par_range(122)	#echte waarde	
-	bow_width = par_range(32.5)	#echte waarde
-	hor_br = par_range(3)			#Niet publiek bekend, schatten met rhino
-	ver_br = par_range(5)			#Niet publiek bekend, schatten met rhino
-	out_bk = par_range(1)			#Niet publiek bekend, schatten met rhino
-	inn_bk = par_range(1)			#Niet publiek bekend, schatten met rhino
-
-	vessel_length = 382  #CHANGE DEPENDING ON STEP 1
-	compute_speeds(length; num_points=10) = round.(range(0, 1, length=num_points) .* sqrt(length * 9.81), digits=2)
-	speed_range = compute_speeds(vessel_length)
-	froude_range = round.(range(0, 1, length=10), digits=2)
 	
-	nothing
-end
-
-# ╔═╡ 073d70ef-da1e-47dd-b0e5-a532b936c883
-md"""
-## The study
-
- 1. **The importance of total vessel length** 
-
- 2. **Computing the speed range and the parameter variance range for all variables**
-Based on the vessel length computed above, the speed range over which each hull geometry is to be evaluated becomes:
-"""
-
-# ╔═╡ 39c8e8f6-6852-4f3e-84b3-72e8c4e3db11
-md"""
-Furthermore, the variance range for all parameters are displayed in the table below. For the all ranges, the middle parameter is equal to the real world value. Note that not for some parameters, the real world value is not known. These values have been visually approximated in Rhino, which is labled in the source column as "approximated".
-"""
-
-# ╔═╡ 00bf348b-9e12-4486-a772-3fe1c26234cd
-# ╠═╡ disabled = true
-#=╠═╡
-begin
-	parameters = ["Slot width", "Slot length", "Bow width", "Horizontal bow radius", "Vertical bow radius", "Outer bilge keel", "Inner bilge keel"]
-	sources = ["Real world value", "Real world value", "Real world value", "Approximated", "Approximated", "Approximated", "Approximated"]
-	
-	ranges = [slot_width, slot_length, bow_width, hor_br, ver_br, out_bk, inn_bk]
-	
-	df_geometry = DataFrame(Parameter = parameters, Range = ranges, Source = sources)
-end
-  ╠═╡ =#
-
-# ╔═╡ 79d035b0-df28-4e7b-bba2-f484fd24e14c
-md"""
- 3. **Computing the wave height for the full speed and parameter variance range**
-
- 4. **Computing the varience in wave height caused by varying the geometric parameter**
-
- 5. **Rank the parameters based on descending varience in wave height**
-
-"""
-
-# ╔═╡ 6a72863a-c5d6-46d3-b2ce-ffe420a49549
-nothing
-
-# ╔═╡ b0df71f8-b3a3-477a-b4aa-5702491840e1
-md"""
-## Results
-"""
-
-# ╔═╡ 0cbe5265-a2d2-45b6-bc8a-60173db020f0
 nothing
 
 # ╔═╡ 4d344c68-f99a-4df5-be6f-cdf4cff29731
@@ -953,7 +835,42 @@ md"""
 """
 
 # ╔═╡ c2437329-a343-4909-af0a-55820fcce5b3
+md"""
+This notebook outlined a study into the use of Grasshopper3D be used to create complex hull shapes compatible with the NeumannKelvin.jl package. 
 
+First, it has been investigated what workflow is required in order to retrieve a hull description that is usable with the NeumannKelvin packages. It has been found that the hull format is to be exported as a JSON file. Furthermore, three functions have been written in order to convert the input into a hull description compatible with the NeumannKelvin packages: "importMesh", "createPanel" and "psShape".
+
+After that, the wave pattern induced by the hull shape has been analyzed using the NeumannKelvin packages. This wave pattern was then compared to the wave pattern induced by a wigley hull that has been modified such that its shape is comparable to that of the grasshopper input hull. While the absolute values of the wave patterns display unphysical behaviour, their shapes resemble both eachother, and a wave pattern that is intuitively expected for the hull shapes. Therefore it has been concluded that, while this study was not able to accurately define the wave patern that is induced by a complex hull shape, it is considered possible with the employed methodology.
+
+Addtionally, the use of a demi-hull in order to improve processing ability has been studied. Since neither the model for the demi-hull nor the full model displayed converging behaviour, the answer to this subquestion remains indifferent. 
+
+Finally, it has been concluded that the study above has not been able to compute valid results. However, given more time, the methodology outlined above is considered promissing in the field of complex potential flow modelling.
+"""
+
+# ╔═╡ 1d56fa89-f345-4502-b7da-3128b62384de
+nothing
+
+# ╔═╡ e77289b9-b7d6-4a20-9b09-777ee67f4a1a
+md"""
+## References
+[1] Weymouth, G., NumericalShipHydro repository, Available at: https://github.com/weymouth/NumericalShipHydro/tree/main/notebooks/geometries.jl
+(Accessed: 4 March 2025)
+
+[2] Davidson, S. About Grasshopper, Grasshopper. Available at: https://www.grasshopper3d.com/ (Accessed: 14 March 2025)
+
+[3] Weymouth, G., NumericalShipHydro repository, Available at: https://github.com/weymouth/NumericalShipHydro/tree/main//wigley.jl
+(Accessed: 4 March 2025)
+
+"""
+
+# ╔═╡ 2bc4a9ed-2e7a-4eb9-8e1d-37939b665753
+using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, Plots, PlotlyBase,PlotlyKaleido, PlutoUI
+
+# ╔═╡ 2adecdf9-45d8-4c18-8227-fb0a554ea3ca
+# ╠═╡ disabled = true
+#=╠═╡
+using NeumannKelvin, Markdown, Plots
+  ╠═╡ =#
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -983,7 +900,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.3"
 manifest_format = "2.0"
-project_hash = "67698398d18742366ad0ab53c1e6fa1475bdeb2f"
+project_hash = "42535031623bae8e671c6d47bb9b952014445cb0"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -2590,7 +2507,7 @@ version = "1.4.1+2"
 # ╠═202dea43-7c21-4c75-b3ae-6e351a384bb7
 # ╟─2071ec6e-d91b-4760-a0e1-3148e1350896
 # ╠═7812bbc4-a0a9-42a0-a0ce-9da86ad380b7
-# ╟─e717c9c8-dae4-48cf-ad4d-d50d94652a33
+# ╠═e717c9c8-dae4-48cf-ad4d-d50d94652a33
 # ╠═cb4c1429-bf61-4cb0-8c4a-11433073d8a9
 # ╟─e4538923-8dde-46b3-8931-9e8c63acffff
 # ╠═480da64b-20da-4baa-b40a-4442a689f22a
@@ -2598,8 +2515,17 @@ version = "1.4.1+2"
 # ╠═cbe65c11-2ee2-4439-8d47-efa8fa9eccdc
 # ╟─223f5aa4-fa41-4414-94b3-6b125e9091e0
 # ╟─7e195849-db71-401b-8c3c-68c712135390
-# ╟─41490feb-1eaf-4273-bbe2-7c7f8b1512d4
 # ╠═3006e2d4-c8b9-48a3-9857-5ab15b59238e
+# ╠═a0c223be-1c3e-4fc2-aa5b-e6b6e077eb40
+# ╠═b2203672-3079-49ec-a7f4-e09804136b86
+# ╟─8546b716-93fc-4372-81be-f72566f8ad9d
+# ╠═277b39c7-d1a6-44dc-ab94-0df434f45ebc
+# ╠═f34a6fa6-2d59-41ad-93fd-e431c52357c9
+# ╠═860dc015-a6f8-44e8-81d4-3c3391cef7dd
+# ╠═301d6aed-a9f6-4a3c-9a41-0a4f693e1355
+# ╠═9998b3e0-a799-42a5-889a-91908d1268dd
+# ╠═744044c4-0ca8-400c-b049-71e16ef052d9
+# ╟─9fef423f-6f85-48ab-86fa-7687af6ce184
 # ╠═580e10df-bdea-4ad7-aa99-facacc160e90
 # ╟─a0c223be-1c3e-4fc2-aa5b-e6b6e077eb40
 # ╟─b2203672-3079-49ec-a7f4-e09804136b86
@@ -2614,13 +2540,31 @@ version = "1.4.1+2"
 # ╟─f9c1d5fb-bf0c-4062-ba46-f6855a6f1961
 # ╠═9fef423f-6f85-48ab-86fa-7687af6ce184
 # ╠═110b514a-6666-48f6-ba52-4b188caf9ca3
-# ╠═3079d163-b5b0-4ad8-aaeb-0c32fe721f21
-# ╠═9a2dc360-058b-4ba9-a477-bad65e2d2dae
+# ╟─3079d163-b5b0-4ad8-aaeb-0c32fe721f21
+# ╟─9a2dc360-058b-4ba9-a477-bad65e2d2dae
 # ╠═1c89e4be-6cb6-4c0b-a3b4-b48e07617470
-# ╠═e924cf54-c392-4728-bc0f-89b3722f9b5a
-# ╠═461ee2cd-e445-4503-9cc2-0fa43d874464
+# ╟─e924cf54-c392-4728-bc0f-89b3722f9b5a
+# ╟─461ee2cd-e445-4503-9cc2-0fa43d874464
 # ╟─68af513d-c457-49f8-ba7c-d6ca7c142975
 # ╠═f16e3fb3-7316-4a6d-a35d-7751fed391a7
+# ╟─08674063-c98a-403e-bf93-354da6e26a34
+# ╟─2652de72-75c0-4737-abea-e83c18ef73a8
+# ╟─5e4d5334-46b2-4935-8f55-27b06a6d1cc5
+# ╟─96f047dc-eb1c-4520-bad0-b4670fbafe57
+# ╠═56a91a7a-1e7f-400d-b18b-4d35f66238e8
+# ╠═cb9e519b-d5e3-440f-8d5b-bc337fe1788e
+# ╠═dee1baa0-8614-465c-b232-afba4df9fe5f
+# ╠═8195e9a2-e85f-4e15-aba9-1096add9b77c
+# ╠═d61b5b53-0ab1-4fee-8ce1-1845c54e918e
+# ╠═3a72df8a-79a0-4087-beff-f839a5ddc133
+# ╠═9d9ad896-0388-4802-bb0e-bc7f62db127f
+# ╠═29891ae5-f88d-4618-acb2-ecf70cb4ed21
+# ╠═42f16fad-8b1f-4292-8834-d25cd1eaa3db
+# ╟─8a8e28a6-0b5a-49cf-9035-97c9bb59214a
+# ╠═beb1d70b-d5eb-4f0e-9c40-3c9abbcf63b6
+# ╠═b40cf08b-81ef-4055-9cdc-e7ef647a4830
+# ╠═2ccb150c-a71f-42eb-b228-a3f301c0fa93
+# ╟─e315acb0-f0a0-4a2d-adc3-c510e0f46997
 # ╠═08674063-c98a-403e-bf93-354da6e26a34
 # ╠═2652de72-75c0-4737-abea-e83c18ef73a8
 # ╠═5e4d5334-46b2-4935-8f55-27b06a6d1cc5
@@ -2636,6 +2580,8 @@ version = "1.4.1+2"
 # ╟─b0df71f8-b3a3-477a-b4aa-5702491840e1
 # ╟─0cbe5265-a2d2-45b6-bc8a-60173db020f0
 # ╟─4d344c68-f99a-4df5-be6f-cdf4cff29731
-# ╠═c2437329-a343-4909-af0a-55820fcce5b3
+# ╟─c2437329-a343-4909-af0a-55820fcce5b3
+# ╟─1d56fa89-f345-4502-b7da-3128b62384de
+# ╠═e77289b9-b7d6-4a20-9b09-777ee67f4a1a
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
