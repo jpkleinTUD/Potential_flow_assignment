@@ -228,8 +228,8 @@ Below is a plot from Baar's thesis, with his Neuman-Kelvin results along with ex
 """
 
 # ╔═╡ 1ade87af-ca4a-4544-a704-915bab1e0586
-Plots.contourf(-2.5:2h:1,-1.5:2h:1.5,(x,y)->2ζ(x,y,q,demihull;ps...),
-	c=:balance,aspect_ratio=:equal,clims=(-0.2,0.2));Plots.plot!(
+Plots.contourf(-2.5:h:1,-1.5:h:1.5,(x,y)->ζ(x,y,q,demihull;ps...),
+	c=:balance,aspect_ratio=:equal,clims=(-0.3,0.3));Plots.plot!(
 	wigley_shape_l_1(h),c=:black,legend=nothing);Plots.plot!(
 	wigley_shape_r_1(h),c=:black,legend=nothing);Plots.plot!(
 	wigley_shape_l_2(h),c=:black,legend=nothing);Plots.plot!(

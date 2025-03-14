@@ -40,17 +40,18 @@ end;
 begin
 	using NeumannKelvin # check for v.0.5.1+
 	B = 0.3
-	offset = 4
+	offset = 3
 	L = 2
-	slot_len = 0.4
+	slot_len = 1
 	
-	wigley_WL(x, offset, unit) = unit*0.5B*(1-(x)^2)+(offset*B)/2 
+	wigley_WL(x, offset, unit) = unit*0.5B*(1-(x)^2)+(offset*B)/2
+	x_coords = [(-L/2), (L/2-slot_len), (L/2-slot_len), (-L/2), (-L/2)]
+	y_coords = [-0.5B*offset, -0.5B*offset, 0.5B*offset, 0.5B*offset, -0.5B*offset] 
 	wigley_shape_l_1(h,x=-(L/2):h:(L/2)) = Plots.Shape(x,wigley_WL.(x, offset, 1))
 	wigley_shape_r_1(h,x=-(L/2):h:(L/2)) = Plots.Shape(x,wigley_WL.(x, offset, -1))
 	wigley_shape_l_2(h,x=-(L/2):h:(L/2)) = Plots.Shape(x,wigley_WL.(x,-offset, 1))
 	wigley_shape_r_2(h,x=-(L/2):h:(L/2)) = Plots.Shape(x,wigley_WL.(x,-offset, -1))
-	box(h,x=-L/2:h:L/2-slot_len, p=-(B*offset/2):h:(B*offset/2)) = Plots.Shape(x,p)
-
+	
 	function wigley_hull(hx,hz;D=1/8)
 		η_l_1(ξ,ζ) = (1-ξ^2)*(1-ζ^2)+offset             # parabolic width equation
 	    S_l_1(ξ,ζ) = SA[0.5L*ξ,0.5B*η_l_1(ξ,ζ),-D*ζ]    # scaled 3D surface
@@ -83,25 +84,26 @@ begin
 		panels_backplate = param_props.(S_bap,ω,ζ',dω,dζ) |> Table
 		panels_bottomplate = param_props.(S_bop,ω,ξ_in2',dω,2dξ_in) |> Table
 
-		front_plate = mapreduce(vcat,  0.5dζ:dζ:1) do ζ
-		    start = -0.5*B*((1-slot_len^2)*(1-ζ^2)-offset)
-			stop = 0.5*B*((1-slot_len^2)*(1-ζ^2)-offset)  
+		front_plate = mapreduce(vcat, 0.5dζ:dζ:1) do ζ
+		    start = -0.5*B*((1-(L/2-slot_len)^2)*(1-ζ^2)-offset)
+			stop = 0.5*B*((1-(L/2-slot_len)^2)*(1-ζ^2)-offset)  
 			η_fp(ω) = 2stop*ω+start
-			S_fp(ω,ζ_3) = SA[L/2-slot_len,η_fp(ω),-D*ζ_3]
+			S_fp(ω,ζ_3) = SA[0,η_fp(ω),-D*ζ_3]
 			front_row = param_props.(S_fp,ω,ζ',dω,dζ) |> Table
 		    #vcat(front_row)  
 		end
 		
 		return vcat(panels_l_1, panels_r_1, panels_l_2, panels_r_2, panels_backplate, panels_bottomplate, front_plate)
+		#return vcat(panels_l_1, panels_r_1, panels_l_2, panels_r_2, panels_backplate, panels_bottomplate)
 		#return vcat(panels_l_1, panels_r_1)
-		#return panels_r_1
+		#return vcat(front_plate, panels_bottomplate)
 	end
 end
 
 # ╔═╡ 0b0d4d9d-c805-441e-a779-deae54c9cad8
 begin
 	using DelimitedFiles
-	h = 1/32
+	h = 1/16
 	demihull = wigley_hull(h,h); length(demihull) 
 	display(demihull)
 end
@@ -230,8 +232,8 @@ Using this potential, we can solve for the free-surface flow on the demihull plo
 Let's investigate the change in the free surface elevation $\zeta$ as we change $\text{Fn}$. Using the wavelength formula above, we should have $\lambda(\text{Fn}=0.4)\approx L$ at the high speed and $\lambda(\text{Fn}=0.2)\approx L/4$ at the low speed, and we see this behaviour verified in our waterline predictions. 
 """
 
-# ╔═╡ f13793a7-8360-4205-af8f-5f360d89ccf8
-md"Fn = $(@bind Fnq Slider([0.2,0.316,0.4],default=0.316,show_value=true))"
+# ╔═╡ 949dc8e4-1d2a-4f15-bcc1-44bd5e6a468d
+Fnq = 0.316
 
 # ╔═╡ 6e233803-f1e9-420a-89af-968d2a7a2b85
 begin
@@ -239,26 +241,16 @@ begin
 	q = influence(demihull;ps...)\first.(demihull.n) # solve for densities
 end;
 
-# ╔═╡ aaf40899-e84b-41c9-8300-02956ab342c7
-Plots.plot(-1.3:h/2:1.3,x->2ζ(x,wigley_WL(x, 0.8, 1),q,demihull;ps...),
-	label=nothing,ylims=(-1,1),xlabel="x/L",ylabel="ζg/U²")
+# ╔═╡ 4f0c2276-b511-40fe-964c-02152ea548a3
 
-# ╔═╡ 61283274-0f84-49e3-acfe-d2f485fe6225
-md"""
-
-Below is a plot from Baar's thesis, with his Neuman-Kelvin results along with experimental measurements for two Wigley hull experiments at $\text{Fn}=0.316$. We see that our numerical method matches Baar's fairly well, but that the Neuman-Kelvin methods don't capture the large bow wave height very well. This seems consistent with linear theory's restriction to low wave amplitudes.
-
-![](https://github.com/weymouth/NumericalShipHydro/blob/8260a6a3d99b8d67340e82826452ad11640f5e3a/Wigley_waterline.png?raw=true)
-"""
 
 # ╔═╡ 1ade87af-ca4a-4544-a704-915bab1e0586
-Plots.contourf(-2.5:2h:1.5,-1.5:2h:1.5,(x,y)->2ζ(x,y,q,demihull;ps...),
-	c=:balance,aspect_ratio=:equal,clims=(-5,5));Plots.plot!(
-	wigley_shape_l_1(h),c=:black,legend=nothing);Plots.plot!(
-	wigley_shape_r_1(h),c=:black,legend=nothing);Plots.plot!(
-	wigley_shape_l_2(h),c=:black,legend=nothing);Plots.plot!(
-	wigley_shape_r_2(h),c=:black,legend=nothing);Plots.plot!(
-	box(h),c=:black,legend=nothing)
+Plots.contourf(-2.5:h:1,-1.5:h:1.5,(x,y)->ζ(x,y,q,demihull;ps...),
+	c=:balance,aspect_ratio=:equal,clims=(-3,3));Plots.plot!(wigley_shape_l_1(h),c=:black,legend=nothing);Plots.plot!(	wigley_shape_r_1(h),c=:black,legend=nothing);Plots.plot!(	wigley_shape_l_2(h),c=:black,legend=nothing);Plots.plot!(	wigley_shape_r_2(h),c=:black,legend=nothing);Plots.plot!(Plots.Shape(x_coords, y_coords), aspect_ratio=:equal, lw=2, color=:black,title = "Froude number = $Fnq")
+
+
+
+
 	
 
 # ╔═╡ 4b4f0d0b-3cbc-4704-b22d-a2e9564cd85e
@@ -1980,10 +1972,9 @@ version = "1.4.1+2"
 # ╠═0b0d4d9d-c805-441e-a779-deae54c9cad8
 # ╠═11a1fc99-a02b-441d-904e-b9be497bc7c0
 # ╟─82c22c27-ee06-4d5a-9cf4-bc3ca177ff88
-# ╟─f13793a7-8360-4205-af8f-5f360d89ccf8
-# ╠═6e233803-f1e9-420a-89af-968d2a7a2b85
-# ╠═aaf40899-e84b-41c9-8300-02956ab342c7
-# ╟─61283274-0f84-49e3-acfe-d2f485fe6225
+# ╠═949dc8e4-1d2a-4f15-bcc1-44bd5e6a468d
+# ╟─6e233803-f1e9-420a-89af-968d2a7a2b85
+# ╠═4f0c2276-b511-40fe-964c-02152ea548a3
 # ╠═1ade87af-ca4a-4544-a704-915bab1e0586
 # ╟─4b4f0d0b-3cbc-4704-b22d-a2e9564cd85e
 # ╟─09ad2bcb-0352-4210-aac2-8841fef4374a
