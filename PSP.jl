@@ -35,11 +35,14 @@ The final goal of the study is to develop a method to improve the efficiency of 
 """
 
 # ╔═╡ 5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
+md"""
 ## Grasshopper
 "For designers who are exploring new shapes using generative algorithms, Grasshopper® is a graphical algorithm editor tightly integrated with Rhino’s 3-D modeling tools. Unlike RhinoScript, Grasshopper requires no knowledge of programming or scripting, but still allows designers to build form generators from the simple to the awe-inspiring. " [2]
 
 Grasshopper allows the simple creation of parametric models in Rhino-3D, without programming experience. This makes it possible to visually see the model being created in real time, a useful attribute when creating complex models.
-
+![]
+(https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/refs/heads/main/Images/Rhino_grasshopper.png)
+	
 ### The model
 
 For this project, a parametric model of the PS was made. The model features 3 primary parts. The input paramters, the creation of the Brep model, and the export to Julia. 
@@ -69,14 +72,8 @@ The file format used was JSON, as this provided the flexability to store both pa
 import datetime
 import json
 
-def get_timestamp():
-    """
-    Returns the current date and time formatted as YYYYMMDD_HH-MM.
-    """
-    return datetime.datetime.now().strftime("%m%d_%H-%M")
-
 n_panels = len(faces)
-timestamp = get_timestamp()
+timestamp = datetime.datetime.now().strftime("%m%d_%H-%M")
 filename = f"PS_hull_{timestamp}_{mode}_{n_panels}p.json"  
 data = {"ship_info":{"length": length,
                         "slot_width": slot_width,
@@ -97,6 +94,7 @@ if activate:
 ```
 
 This answers the first sub-question: "What format does the hull need to have to be exported to Julia?"
+"""
 
 # ╔═╡ c7786892-73cf-4e23-bfe6-339feae6f4de
 begin
@@ -815,10 +813,16 @@ begin
 end
   ╠═╡ =#
 
-# ╔═╡ 2adecdf9-45d8-4c18-8227-fb0a554ea3ca
+# ╔═╡ 860dc015-a6f8-44e8-81d4-3c3391cef7dd
 # ╠═╡ disabled = true
 #=╠═╡
-using NeumannKelvin, Markdown, Plots
+q, ps, A = solve_sources(panels;Fn=Fn1);
+  ╠═╡ =#
+
+# ╔═╡ adc7fdd3-b339-4573-9717-34d7d4ac0324
+# ╠═╡ disabled = true
+#=╠═╡
+using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, Plots, PlotlyBase,PlotlyKaleido, PlutoUI
   ╠═╡ =#
 
 # ╔═╡ 40a64ec4-cdaa-497d-9283-c3c1da062d58
@@ -830,6 +834,12 @@ function NeumannKelvin.kelvin(ξ,α;Fn,max_z=-1/50);
 	z = min(z,max_z/Fn^2); # limit z!! 💔
 	(nearfield(x,y,z)+wavelike(x,abs(y),z))/Fn^2;
 end
+  ╠═╡ =#
+
+# ╔═╡ 2adecdf9-45d8-4c18-8227-fb0a554ea3ca
+# ╠═╡ disabled = true
+#=╠═╡
+using NeumannKelvin, Markdown, Plots
   ╠═╡ =#
 
 # ╔═╡ 98e84ada-af82-4715-b894-6a9e1153ebb8
@@ -845,18 +855,6 @@ begin
 	    ∫surface(x,p;kwargs...)+∫surface(x,reflect(p,flip=SA[1,-1,1]);kwargs...);
 	end
 end
-  ╠═╡ =#
-
-# ╔═╡ 860dc015-a6f8-44e8-81d4-3c3391cef7dd
-# ╠═╡ disabled = true
-#=╠═╡
-q, ps, A = solve_sources(panels;Fn=Fn1);
-  ╠═╡ =#
-
-# ╔═╡ adc7fdd3-b339-4573-9717-34d7d4ac0324
-# ╠═╡ disabled = true
-#=╠═╡
-using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, Plots, PlotlyBase,PlotlyKaleido, PlutoUI
   ╠═╡ =#
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -2541,7 +2539,7 @@ version = "1.4.1+2"
 # ╟─fa570bdd-3772-4750-980d-d75cf268ffcf
 # ╠═2adecdf9-45d8-4c18-8227-fb0a554ea3ca
 # ╠═5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
-# ╟─c7786892-73cf-4e23-bfe6-339feae6f4de
+# ╠═c7786892-73cf-4e23-bfe6-339feae6f4de
 # ╟─ef64d57f-30e6-45dd-b598-65728d31b77b
 # ╠═adc7fdd3-b339-4573-9717-34d7d4ac0324
 # ╠═aa0202ef-8dea-4c3f-a017-fe367efca375
