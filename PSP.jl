@@ -4,36 +4,17 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ 2bc4a9ed-2e7a-4eb9-8e1d-37939b665753
-using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, Plots, PlotlyBase,PlotlyKaleido, PlutoUI
-
-# ╔═╡ 480da64b-20da-4baa-b40a-4442a689f22a
-begin 
-	using NeumannKelvin:kelvin,wavelike,nearfield
-	# From wigley notebook
-	reflect(x::SVector;flip=SA[1,-1,1]) = x.*flip
-	reflect(p::NamedTuple;flip=SA[1,-1,1]) = (x=reflect(p.x;flip), 
-		n=reflect(p.n;flip), dA=p.dA, x₄=reflect.(p.x₄;flip), wl=p.wl)
-	
-	function NeumannKelvin.kelvin(ξ,α;Fn,max_z=-1/50);
-		ξ[3]> 0 && throw(DomainError(ξ[3],"Sources must be below z=0"));
-		x,y,z = (ξ-α)/Fn^2;
-		z = min(z,max_z/Fn^2); # limit z!! 💔
-		(nearfield(x,y,z)+wavelike(x,abs(y),z))/Fn^2;
-	end
-
-	∫contour(x,p;Fn) = kelvin(x,p.x .* SA[1,1,0];Fn)*p.n[1]*p.dA;
-	
-	function ∫surface(x,p;Fn,χ=true,dz=0);
-		(!χ || !p.wl) && return ∫kelvin(x,p;Fn,dz); # no waterline
-		∫kelvin(x,p;Fn,dz)+∫contour(x,p;Fn);
-	end
-	
-	function ∫surface_S₂(x,p;kwargs...);  # y-symmetric potentials
-	    ∫surface(x,p;kwargs...)+∫surface(x,reflect(p,flip=SA[1,-1,1]);kwargs...);
-	end
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    #! format: off
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+    #! format: on
 end
-
 
 # ╔═╡ fa570bdd-3772-4750-980d-d75cf268ffcf
 md"""
@@ -58,12 +39,6 @@ The following sub-questions were investigated:
 The final goal of the study is to develop a method to improve the efficiency of the most time consuming part of potential flow simulation - the creation of the model [1]
 
 """
-
-# ╔═╡ 2adecdf9-45d8-4c18-8227-fb0a554ea3ca
-# ╠═╡ disabled = true
-#=╠═╡
-using NeumannKelvin, Markdown, Plots
-  ╠═╡ =#
 
 # ╔═╡ 5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
 md"""
@@ -250,7 +225,7 @@ function createPanel(vertices::Array{Array{Float64, 1}, 1},
 	
 	wl_panel = false;
 	
-	if any([vertex[3]>-1/50 for vertex in face_vertices])
+	if any([vertex[3]>=0 for vertex in face_vertices])
 		wl_panel=true
 	end
 	
@@ -282,6 +257,7 @@ This function simply creates a Plots shape based on the parameters of the model 
 """
 
 # ╔═╡ cb4c1429-bf61-4cb0-8c4a-11433073d8a9
+#=╠═╡
 function psShape(ship_info::Dict{String, Any});
 		length = float(ship_info["length"]);
 		bow_length = float(ship_info["bow"]["length"]);
@@ -328,8 +304,10 @@ function psShape(ship_info::Dict{String, Any});
 	
 end
 
+  ╠═╡ =#
 
 # ╔═╡ 202dea43-7c21-4c75-b3ae-6e351a384bb7
+#=╠═╡
 function importMesh(filename::String);
 	import_data:: Dict{String, Any} = JSON.parsefile(filename);
 	toArray(str:: String) = parse.(Float64, split(strip(str, ['{', '}']), ","));
@@ -358,6 +336,7 @@ function importMesh(filename::String);
 	return panels, shape, total_length, h_mean;
 
 end
+  ╠═╡ =#
 
 # ╔═╡ 1e1562d3-e70b-4db8-84df-1587b64278cb
 
@@ -374,25 +353,6 @@ The solve_sources function has been created to calculate the strengths of the so
 
 """
 
-# ╔═╡ cbe65c11-2ee2-4439-8d47-efa8fa9eccdc
-function solve_sources(panels; demi=false, Fn=0.2, verbose=false)
-	if demi
-		ps = (ϕ=∫surface_S₂,Fn=Fn)
-	else
-		ps = (ϕ=∫surface,Fn=Fn)# NamedTuple of keyword-arguments
-	end
-	A = influence(panels;ps...)
-	
-	if verbose
-		A_diag = [A[i, i] for i in axes(A, 1)]
-		print("Min A: $(minimum(A_diag)), Mean A: $(sum(A_diag)/length(A_diag)), Max A: $(maximum(A_diag))")
-	end
-	
-	b = first.(panels.n)
-	q = A\b # solve for densities
-	return q, ps, A
-end;
-
 # ╔═╡ 223f5aa4-fa41-4414-94b3-6b125e9091e0
 md"""
 Using these functions the second sub-question is answered: "How can the hull be converted to the NeumannKelvin packages required input format?"
@@ -401,32 +361,64 @@ Using these functions the second sub-question is answered: "How can the hull be 
 # ╔═╡ 7e195849-db71-401b-8c3c-68c712135390
 md"""
 ## Importing a custom mesh
+
+With all the necessary functions defined, models created with the Grasshopper tool can now be imported. As a demonstration of the method two hull forms will be imported and solved for, one a full hull and the other a demi-hull.
+
+The size of the models is 1x1m and is they are made with the following parameters:
+
+| Parameter | Value | 
+| :--------- | -----: |
+| Hull length | 0.5m |
+| Slot width | 0.5m |
+| Bow width | 0.25m | 
+| Bow length | 0.5m | 
+| Draught | 0.25m | 
+| Bow radius (top) | 83% |
+| Bow radius (side) | 53% |
+| Bilge radius | 23% |
+
+The radii are defined as percentages of the bow width (Top radius) and draught (Side and bilge radius)
+
+"""
+
+# ╔═╡ 41490feb-1eaf-4273-bbe2-7c7f8b1512d4
+md"""
+### Importing panels
 """
 
 # ╔═╡ 3006e2d4-c8b9-48a3-9857-5ab15b59238e
-# ╠═╡ disabled = true
 #=╠═╡
-panels, shape, length_ps, h_mean = importMesh(joinpath(data_folder, "small_ps/PS_hull_0312_21-05_double_small_fine.json"));
+pᵈ, sᵈ, lᵈ, hᵈₘ = importMesh(joinpath(@__DIR__, "data", "small_ps", "PS_hull_0312_21-05_double_small_fine.json"));
+  ╠═╡ =#
+
+# ╔═╡ 580e10df-bdea-4ad7-aa99-facacc160e90
+#=╠═╡
+pʰ, sʰ, lʰ, hʰₘ = importMesh(joinpath(@__DIR__, "data", "small_ps", "PS_hull_0312_22-18_half_small_fine.json"));
   ╠═╡ =#
 
 # ╔═╡ a0c223be-1c3e-4fc2-aa5b-e6b6e077eb40
-# ╠═╡ disabled = true
-#=╠═╡
 md"""
-Plot panels? $(@bind plot_panels CheckBox(default=false))
+Plot panels scatterplot? For performance this is optional.
+
+$(@bind plot_panels CheckBox(default=false))
 """
-  ╠═╡ =#
 
 # ╔═╡ b2203672-3079-49ec-a7f4-e09804136b86
-# ╠═╡ disabled = true
 #=╠═╡
 begin
 	if plot_panels
-		Plots.scatter3d(
-			eachrow(stack(panels.x))...,label=nothing,
-			marker_z=@.(panels.wl),
+		plotly()
+		plot(Plots.scatter3d(
+			eachrow(stack(pᵈ.x[1:5:end]))...,label=nothing,
+			marker_z=@.(pᵈ.wl[1:5:end]),
 			c=palette([:grey,:green], 2),
-			title = "PS hull with waterline panels marked", aspect_ratio=:equal)
+			title = "PS hull with waterline panels marked", aspect_ratio=1.0),
+			Plots.scatter3d(
+			eachrow(stack(pʰ.x[1:5:end]))...,label=nothing,
+			marker_z=@.(pʰ.wl[1:5:end]),
+			c=palette([:grey,:green], 2),
+			title = "PS hull with waterline panels marked", aspect_ratio=1.0),
+			layout=(1,2),size=(600,300))
 	end
 end
   ╠═╡ =#
@@ -435,10 +427,7 @@ end
 md"""Using the code from class the source strengths can be solved"""
 
 # ╔═╡ 277b39c7-d1a6-44dc-ab94-0df434f45ebc
-# ╠═╡ disabled = true
-#=╠═╡
 
-  ╠═╡ =#
 
 # ╔═╡ f34a6fa6-2d59-41ad-93fd-e431c52357c9
 # ╠═╡ disabled = true
@@ -452,12 +441,6 @@ The corresponding velocity is $(round(1.944 * Fn1√(9.81*length_ps); digits=2))
 """
   ╠═╡ =#
 
-# ╔═╡ 860dc015-a6f8-44e8-81d4-3c3391cef7dd
-# ╠═╡ disabled = true
-#=╠═╡
-q, ps, A = solve_sources(panels;Fn=Fn1);
-  ╠═╡ =#
-
 # ╔═╡ 301d6aed-a9f6-4a3c-9a41-0a4f693e1355
 # ╠═╡ disabled = true
 #=╠═╡
@@ -468,25 +451,6 @@ begin
 	plot? $(@bind plot_contour_1 CheckBox(default=false))
 	"""
 end
-  ╠═╡ =#
-
-# ╔═╡ 9998b3e0-a799-42a5-889a-91908d1268dd
-# ╠═╡ disabled = true
-#=╠═╡
-begin
-if plot_contour_1
-    plotly()
-    Plots.contourf(-2:h_mean:2,-2:h_mean:2, (x,y)->2ζ(x,y,q,panels;ps...),
-        c=:balance, aspect_ratio=:equal);
-    Plots.plot!(shape, c=:blue,legend=nothing)
-end
-end
-  ╠═╡ =#
-
-# ╔═╡ 744044c4-0ca8-400c-b049-71e16ef052d9
-# ╠═╡ disabled = true
-#=╠═╡
-added_mass(panels; ps)
   ╠═╡ =#
 
 # ╔═╡ 9fef423f-6f85-48ab-86fa-7687af6ce184
@@ -563,29 +527,44 @@ begin
 end
   ╠═╡ =#
 
-# ╔═╡ 9a2dc360-058b-4ba9-a477-bad65e2d2dae
+# ╔═╡ cbe65c11-2ee2-4439-8d47-efa8fa9eccdc
+#=╠═╡
+function solve_sources(panels; demi=false, Fn=0.2, verbose=false)
+	if demi
+		ps = (ϕ=∫surface_S₂,Fn=Fn)
+	else
+		ps = (ϕ=∫surface,Fn=Fn)# NamedTuple of keyword-arguments
+	end
+	A = influence(panels;ps...)
+	
+	if verbose
+		A_diag = [A[i, i] for i in axes(A, 1)]
+		print("Min A: $(minimum(A_diag)), Mean A: $(sum(A_diag)/length(A_diag)), Max A: $(maximum(A_diag))")
+	end
+	
+	b = first.(panels.n)
+	q = A\b # solve for densities
+	return q, ps, A
+end;
+  ╠═╡ =#
+
+# ╔═╡ 9998b3e0-a799-42a5-889a-91908d1268dd
 # ╠═╡ disabled = true
 #=╠═╡
 begin
-	Fnq = 0.2 	# Froude number 0.2 taken consistent across all models
-	### CODE BELOW TAKEN DIRECTLY FROM WIGLEY.JL ###
-	function NeumannKelvin.kelvin(ξ,α;Fn,max_z=-1/50)
-		ξ[3]> 0 && throw(DomainError(ξ[3],"Sources must be below z=0"))
-		x,y,z = (ξ-α)/Fn^2
-		z = min(z,max_z/Fn^2) # limit z!! 💔
-		(nearfield(x,y,z)+wavelike(x,abs(y),z))/Fn^2
-	end
-	
-	∫contour(x,p;Fn) = kelvin(x,p.x .* SA[1,1,0];Fn)*p.n[1]*p.dA
-	function ∫surface(x,p;Fn,χ=true,dz=0)
-		(!χ || p.x[3]^2 > p.dA) && return ∫kelvin(x,p;Fn,dz) # no waterline
-		∫kelvin(x,p;Fn,dz)+∫contour(x,p;Fn)
-	end
-	
-	ps = (ϕ=∫surface,Fn=Fnq)        # NamedTuple of keyword-arguments
-	q = influence(doublehull;ps...)\first.(doublehull.n); # solve for densities
-	### CODE ABOVE TAKEN DIRECTLY FROM WIGLEY.JL ###
+if plot_contour_1
+    plotly()
+    Plots.contourf(-2:h_mean:2,-2:h_mean:2, (x,y)->2ζ(x,y,q,panels;ps...),
+        c=:balance, aspect_ratio=:equal);
+    Plots.plot!(shape, c=:blue,legend=nothing)
 end
+end
+  ╠═╡ =#
+
+# ╔═╡ 744044c4-0ca8-400c-b049-71e16ef052d9
+# ╠═╡ disabled = true
+#=╠═╡
+added_mass(panels; ps)
   ╠═╡ =#
 
 # ╔═╡ 1c89e4be-6cb6-4c0b-a3b4-b48e07617470
@@ -812,16 +791,6 @@ begin
 	nothing
 end
 
-# ╔═╡ 073d70ef-da1e-47dd-b0e5-a532b936c883
-md"""
-## The study
-
- 1. **The importance of total vessel length** 
-
- 2. **Computing the speed range and the parameter variance range for all variables**
-Based on the vessel length computed above, the speed range over which each hull geometry is to be evaluated becomes:
-"""
-
 # ╔═╡ c45ce64f-2ae1-4120-adad-24c1f843498c
 # ╠═╡ disabled = true
 #=╠═╡
@@ -834,6 +803,16 @@ begin
 	df_speed = DataFrame(Value = value, Range = speed_ranges)
 end
   ╠═╡ =#
+
+# ╔═╡ 073d70ef-da1e-47dd-b0e5-a532b936c883
+md"""
+## The study
+
+ 1. **The importance of total vessel length** 
+
+ 2. **Computing the speed range and the parameter variance range for all variables**
+Based on the vessel length computed above, the speed range over which each hull geometry is to be evaluated becomes:
+"""
 
 # ╔═╡ 39c8e8f6-6852-4f3e-84b3-72e8c4e3db11
 md"""
@@ -885,13 +864,83 @@ begin
 	@eval Main.PlutoRunner format_output(x::AbstractArray{Float64}; context = default_iocontext) = format_output_default(round.(x; digits = 3), context)
 end;
 
+# ╔═╡ 860dc015-a6f8-44e8-81d4-3c3391cef7dd
+# ╠═╡ disabled = true
+#=╠═╡
+q, ps, A = solve_sources(panels;Fn=Fn1);
+  ╠═╡ =#
+
+# ╔═╡ 9a2dc360-058b-4ba9-a477-bad65e2d2dae
+# ╠═╡ disabled = true
+#=╠═╡
+begin
+	Fnq = 0.2 	# Froude number 0.2 taken consistent across all models
+	### CODE BELOW TAKEN DIRECTLY FROM WIGLEY.JL ###
+	function NeumannKelvin.kelvin(ξ,α;Fn,max_z=-1/50)
+		ξ[3]> 0 && throw(DomainError(ξ[3],"Sources must be below z=0"))
+		x,y,z = (ξ-α)/Fn^2
+		z = min(z,max_z/Fn^2) # limit z!! 💔
+		(nearfield(x,y,z)+wavelike(x,abs(y),z))/Fn^2
+	end
+	
+	∫contour(x,p;Fn) = kelvin(x,p.x .* SA[1,1,0];Fn)*p.n[1]*p.dA
+	function ∫surface(x,p;Fn,χ=true,dz=0)
+		(!χ || p.x[3]^2 > p.dA) && return ∫kelvin(x,p;Fn,dz) # no waterline
+		∫kelvin(x,p;Fn,dz)+∫contour(x,p;Fn)
+	end
+	
+	ps = (ϕ=∫surface,Fn=Fnq)        # NamedTuple of keyword-arguments
+	q = influence(doublehull;ps...)\first.(doublehull.n); # solve for densities
+	### CODE ABOVE TAKEN DIRECTLY FROM WIGLEY.JL ###
+end
+  ╠═╡ =#
+
+# ╔═╡ 2adecdf9-45d8-4c18-8227-fb0a554ea3ca
+# ╠═╡ disabled = true
+#=╠═╡
+using NeumannKelvin, Markdown, Plots
+  ╠═╡ =#
+
+# ╔═╡ 480da64b-20da-4baa-b40a-4442a689f22a
+#=╠═╡
+begin 
+	using NeumannKelvin:kelvin,wavelike,nearfield
+	# From wigley notebook
+	reflect(x::SVector;flip=SA[1,-1,1]) = x.*flip
+	reflect(p::NamedTuple;flip=SA[1,-1,1]) = (x=reflect(p.x;flip), 
+		n=reflect(p.n;flip), dA=p.dA, x₄=reflect.(p.x₄;flip), wl=p.wl)
+	
+	function NeumannKelvin.kelvin(ξ,α;Fn,max_z=-1/50);
+		ξ[3]> 0 && throw(DomainError(ξ[3],"Sources must be below z=0"));
+		x,y,z = (ξ-α)/Fn^2;
+		z = min(z,max_z/Fn^2); # limit z!! 💔
+		(nearfield(x,y,z)+wavelike(x,abs(y),z))/Fn^2;
+	end
+
+	∫contour(x,p;Fn) = kelvin(x,p.x .* SA[1,1,0];Fn)*p.n[1]*p.dA;
+	
+	function ∫surface(x,p;Fn,χ=true,dz=0);
+		(!χ || !p.wl) && return ∫kelvin(x,p;Fn,dz); # no waterline
+		∫kelvin(x,p;Fn,dz)+∫contour(x,p;Fn);
+	end
+	
+	function ∫surface_S₂(x,p;kwargs...);  # y-symmetric potentials
+	    ∫surface(x,p;kwargs...)+∫surface(x,reflect(p,flip=SA[1,-1,1]);kwargs...);
+	end
+end
+
+  ╠═╡ =#
+
+# ╔═╡ 2bc4a9ed-2e7a-4eb9-8e1d-37939b665753
+#=╠═╡
+using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, Plots, PlotlyBase,PlotlyKaleido, PlutoUI
+  ╠═╡ =#
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
-DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 NeumannKelvin = "7f078b06-e5c4-4cf8-bb56-b92882a0ad03"
 PlotlyBase = "a03496cd-edff-5a9b-9e67-9cda94a718b5"
 PlotlyKaleido = "f2990250-8cf9-495f-b13a-cce12b45703c"
@@ -900,7 +949,6 @@ PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-DataFrames = "~1.7.0"
 JSON = "~0.21.4"
 NeumannKelvin = "~0.5.1"
 PlotlyBase = "~0.8.20"
@@ -916,7 +964,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.3"
 manifest_format = "2.0"
-project_hash = "4103bb7c58447756354e1d4ceb582962036115f5"
+project_hash = "67698398d18742366ad0ab53c1e6fa1475bdeb2f"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -1146,21 +1194,10 @@ git-tree-sha1 = "439e35b0b36e2e5881738abc8857bd92ad6ff9a8"
 uuid = "d38c429a-6771-53c6-b99e-75d170b6e991"
 version = "0.6.3"
 
-[[deps.Crayons]]
-git-tree-sha1 = "249fe38abf76d48563e2f4556bebd215aa317e15"
-uuid = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
-version = "4.1.1"
-
 [[deps.DataAPI]]
 git-tree-sha1 = "abe83f3a2f1b857aac70ef8b269080af17764bbe"
 uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
 version = "1.16.0"
-
-[[deps.DataFrames]]
-deps = ["Compat", "DataAPI", "DataStructures", "Future", "InlineStrings", "InvertedIndices", "IteratorInterfaceExtensions", "LinearAlgebra", "Markdown", "Missings", "PooledArrays", "PrecompileTools", "PrettyTables", "Printf", "Random", "Reexport", "SentinelArrays", "SortingAlgorithms", "Statistics", "TableTraits", "Tables", "Unicode"]
-git-tree-sha1 = "fb61b4812c49343d7ef0b533ba982c46021938a6"
-uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-version = "1.7.0"
 
 [[deps.DataStructures]]
 deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
@@ -1412,19 +1449,6 @@ git-tree-sha1 = "4da0f88e9a39111c2fa3add390ab15f3a44f3ca3"
 uuid = "22cec73e-a1b8-11e9-2c92-598750a2cf9c"
 version = "0.3.1"
 
-[[deps.InlineStrings]]
-git-tree-sha1 = "6a9fde685a7ac1eb3495f8e812c5a7c3711c2d5e"
-uuid = "842dd82b-1e85-43dc-bf29-5d0ee9dffc48"
-version = "1.4.3"
-
-    [deps.InlineStrings.extensions]
-    ArrowTypesExt = "ArrowTypes"
-    ParsersExt = "Parsers"
-
-    [deps.InlineStrings.weakdeps]
-    ArrowTypes = "31f734f8-188a-4ce0-8406-c8a06bd891cd"
-    Parsers = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-
 [[deps.IntelOpenMP_jll]]
 deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl"]
 git-tree-sha1 = "0f14a5456bdc6b9731a5682f439a672750a09e48"
@@ -1445,11 +1469,6 @@ weakdeps = ["Dates", "Test"]
     [deps.InverseFunctions.extensions]
     InverseFunctionsDatesExt = "Dates"
     InverseFunctionsTestExt = "Test"
-
-[[deps.InvertedIndices]]
-git-tree-sha1 = "6da3c4316095de0f5ee2ebd875df8721e7e0bdbe"
-uuid = "41ab1584-1d38-5bbf-9106-f11c6c58b48f"
-version = "1.3.1"
 
 [[deps.IrrationalConstants]]
 git-tree-sha1 = "e2222959fbc6c19554dc15174c81bf7bf3aa691c"
@@ -1867,12 +1886,6 @@ git-tree-sha1 = "5152abbdab6488d5eec6a01029ca6697dff4ec8f"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 version = "0.7.23"
 
-[[deps.PooledArrays]]
-deps = ["DataAPI", "Future"]
-git-tree-sha1 = "36d8b4b899628fb92c2749eb488d884a926614d3"
-uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
-version = "1.4.3"
-
 [[deps.PrecompileTools]]
 deps = ["Preferences"]
 git-tree-sha1 = "5aa36f7049a63a1528fe8f7c3f2113413ffd4e1f"
@@ -1884,12 +1897,6 @@ deps = ["TOML"]
 git-tree-sha1 = "9306f6085165d270f7e3db02af26a400d580f5c6"
 uuid = "21216c6a-2e73-6563-6e65-726566657250"
 version = "1.4.3"
-
-[[deps.PrettyTables]]
-deps = ["Crayons", "LaTeXStrings", "Markdown", "PrecompileTools", "Printf", "Reexport", "StringManipulation", "Tables"]
-git-tree-sha1 = "1101cd475833706e4d0e7b122218257178f48f34"
-uuid = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
-version = "2.4.0"
 
 [[deps.Printf]]
 deps = ["Unicode"]
@@ -2012,12 +2019,6 @@ git-tree-sha1 = "3bac05bc7e74a75fd9cba4295cde4045d9fe2386"
 uuid = "6c6a2e73-6563-6170-7368-637461726353"
 version = "1.2.1"
 
-[[deps.SentinelArrays]]
-deps = ["Dates", "Random"]
-git-tree-sha1 = "712fb0231ee6f9120e005ccd56297abbc053e7e0"
-uuid = "91c51154-3ec4-41a3-a24f-3f23e20d615c"
-version = "1.4.8"
-
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 version = "1.11.0"
@@ -2119,12 +2120,6 @@ deps = ["AliasTables", "DataAPI", "DataStructures", "LinearAlgebra", "LogExpFunc
 git-tree-sha1 = "29321314c920c26684834965ec2ce0dacc9cf8e5"
 uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 version = "0.34.4"
-
-[[deps.StringManipulation]]
-deps = ["PrecompileTools"]
-git-tree-sha1 = "725421ae8e530ec29bcbdddbe91ff8053421d023"
-uuid = "892a3eda-7b42-436c-8928-eab12a02cf0e"
-version = "0.4.1"
 
 [[deps.StyledStrings]]
 uuid = "f489334b-da3d-4c2e-b8f0-e476e12c162b"
@@ -2585,8 +2580,10 @@ version = "1.4.1+2"
 # ╠═cbe65c11-2ee2-4439-8d47-efa8fa9eccdc
 # ╟─223f5aa4-fa41-4414-94b3-6b125e9091e0
 # ╟─7e195849-db71-401b-8c3c-68c712135390
+# ╟─41490feb-1eaf-4273-bbe2-7c7f8b1512d4
 # ╠═3006e2d4-c8b9-48a3-9857-5ab15b59238e
-# ╠═a0c223be-1c3e-4fc2-aa5b-e6b6e077eb40
+# ╠═580e10df-bdea-4ad7-aa99-facacc160e90
+# ╟─a0c223be-1c3e-4fc2-aa5b-e6b6e077eb40
 # ╠═b2203672-3079-49ec-a7f4-e09804136b86
 # ╟─8546b716-93fc-4372-81be-f72566f8ad9d
 # ╠═277b39c7-d1a6-44dc-ab94-0df434f45ebc
