@@ -4,6 +4,9 @@
 using Markdown
 using InteractiveUtils
 
+# ╔═╡ 2bc4a9ed-2e7a-4eb9-8e1d-37939b665753
+using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, Plots, PlotlyBase,PlotlyKaleido, PlutoUI
+
 # ╔═╡ 480da64b-20da-4baa-b40a-4442a689f22a
 begin 
 	using NeumannKelvin:kelvin,wavelike,nearfield
@@ -55,6 +58,12 @@ The following sub-questions were investigated:
 The final goal of the study is to develop a method to improve the efficiency of the most time consuming part of potential flow simulation - the creation of the model [1]
 
 """
+
+# ╔═╡ 2adecdf9-45d8-4c18-8227-fb0a554ea3ca
+# ╠═╡ disabled = true
+#=╠═╡
+using NeumannKelvin, Markdown, Plots
+  ╠═╡ =#
 
 # ╔═╡ 5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
 md"""
@@ -487,6 +496,30 @@ end
 # ╠═╡ disabled = true
 #=╠═╡
 added_mass(panels; ps)
+  ╠═╡ =#
+
+# ╠═╡ disabled = true
+#=╠═╡
+begin
+	Fnq = 0.2 	# Froude number 0.2 taken consistent across all models
+	### CODE BELOW TAKEN DIRECTLY FROM WIGLEY.JL ###
+	function NeumannKelvin.kelvin(ξ,α;Fn,max_z=-1/50)
+		ξ[3]> 0 && throw(DomainError(ξ[3],"Sources must be below z=0"))
+		x,y,z = (ξ-α)/Fn^2
+		z = min(z,max_z/Fn^2) # limit z!! 💔
+		(nearfield(x,y,z)+wavelike(x,abs(y),z))/Fn^2
+	end
+	
+	∫contour(x,p;Fn) = kelvin(x,p.x .* SA[1,1,0];Fn)*p.n[1]*p.dA
+	function ∫surface(x,p;Fn,χ=true,dz=0)
+		(!χ || p.x[3]^2 > p.dA) && return ∫kelvin(x,p;Fn,dz) # no waterline
+		∫kelvin(x,p;Fn,dz)+∫contour(x,p;Fn)
+	end
+	
+	ps = (ϕ=∫surface,Fn=Fnq)        # NamedTuple of keyword-arguments
+	q = influence(doublehull;ps...)\first.(doublehull.n); # solve for densities
+	### CODE ABOVE TAKEN DIRECTLY FROM WIGLEY.JL ###
+end
   ╠═╡ =#
 
 # ╔═╡ 9fef423f-6f85-48ab-86fa-7687af6ce184
@@ -931,6 +964,16 @@ begin
 	nothing
 end
 
+# ╔═╡ 073d70ef-da1e-47dd-b0e5-a532b936c883
+md"""
+## The study
+
+ 1. **The importance of total vessel length** 
+
+ 2. **Computing the speed range and the parameter variance range for all variables**
+Based on the vessel length computed above, the speed range over which each hull geometry is to be evaluated becomes:
+"""
+
 # ╔═╡ c45ce64f-2ae1-4120-adad-24c1f843498c
 # ╠═╡ disabled = true
 #=╠═╡
@@ -943,16 +986,6 @@ begin
 	df_speed = DataFrame(Value = value, Range = speed_ranges)
 end
   ╠═╡ =#
-
-# ╔═╡ 073d70ef-da1e-47dd-b0e5-a532b936c883
-md"""
-## The study
-
- 1. **The importance of total vessel length** 
-
- 2. **Computing the speed range and the parameter variance range for all variables**
-Based on the vessel length computed above, the speed range over which each hull geometry is to be evaluated becomes:
-"""
 
 # ╔═╡ 39c8e8f6-6852-4f3e-84b3-72e8c4e3db11
 md"""
@@ -1000,15 +1033,6 @@ md"""
 
 # ╔═╡ c2437329-a343-4909-af0a-55820fcce5b3
 
-
-# ╔═╡ 2bc4a9ed-2e7a-4eb9-8e1d-37939b665753
-using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, Plots, PlotlyBase,PlotlyKaleido, PlutoUI
-
-# ╔═╡ 2adecdf9-45d8-4c18-8227-fb0a554ea3ca
-# ╠═╡ disabled = true
-#=╠═╡
-using NeumannKelvin, Markdown, Plots
-  ╠═╡ =#
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -2701,7 +2725,7 @@ version = "1.4.1+2"
 # ╠═202dea43-7c21-4c75-b3ae-6e351a384bb7
 # ╟─2071ec6e-d91b-4760-a0e1-3148e1350896
 # ╠═7812bbc4-a0a9-42a0-a0ce-9da86ad380b7
-# ╠═e717c9c8-dae4-48cf-ad4d-d50d94652a33
+# ╟─e717c9c8-dae4-48cf-ad4d-d50d94652a33
 # ╠═cb4c1429-bf61-4cb0-8c4a-11433073d8a9
 # ╠═1e1562d3-e70b-4db8-84df-1587b64278cb
 # ╟─e4538923-8dde-46b3-8931-9e8c63acffff
