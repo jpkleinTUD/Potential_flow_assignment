@@ -4,6 +4,18 @@
 using Markdown
 using InteractiveUtils
 
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    #! format: off
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+    #! format: on
+end
+
 # ╔═╡ 480da64b-20da-4baa-b40a-4442a689f22a
 begin 
 	using NeumannKelvin:kelvin,wavelike,nearfield
@@ -389,27 +401,41 @@ Using these functions the second sub-question is answered: "How can the hull be 
 # ╔═╡ 7e195849-db71-401b-8c3c-68c712135390
 md"""
 ## Importing a custom mesh
+
+With all the necessary functions defined, models created with the Grasshopper tool can now be imported. As a demonstration of the method two hull forms will be imported and solved for, one a full hull and the other a demi-hull.
+
+The size of the models is 1x1m and is they are made with the following parameters:
+
+| Parameter | Value | 
+| :--------- | -----: |
+| Hull length | 0.5m |
+| Slot width | 0.5m |
+| Bow width | 0.25m | 
+| Bow length | 0.5m | 
+| Draught | 0.25m | 
+| Bow radius (top) | 83% |
+| Bow radius (side) | 53% |
+| Bilge radius | 23% |
+
+The radii are defined as percentages of the bow width (Top radius) and draught (Side and bilge radius)
+
+### Importing panels
 """
 
 # ╔═╡ 3006e2d4-c8b9-48a3-9857-5ab15b59238e
-# ╠═╡ disabled = true
-#=╠═╡
-panels, shape, length_ps, h_mean = importMesh(joinpath(data_folder, "small_ps/PS_hull_0312_21-05_double_small_fine.json"));
-  ╠═╡ =#
+pᵈ, sᵈ, lᵈ, hᵈₘ = importMesh(joinpath(@__DIR__, "data", "small_ps", "PS_hull_0312_21-05_double_small_fine.json"));
+
+# ╔═╡ 2860ce20-e932-4205-8219-492696f4106c
+pʰ, sʰ, lʰ, hʰₘ = importMesh(joinpath(@__DIR__, "data", "small_ps", "PS_hull_0312_22-18_half_small_fine.json"));
 
 # ╔═╡ a0c223be-1c3e-4fc2-aa5b-e6b6e077eb40
-# ╠═╡ disabled = true
-#=╠═╡
 md"""
 Plot panels scatterplot? For performance this is optional, and only 1 every 5 panels is plotted.
 
 $(@bind plot_panels CheckBox(default=false))
 """
-  ╠═╡ =#
 
 # ╔═╡ b2203672-3079-49ec-a7f4-e09804136b86
-# ╠═╡ disabled = true
-#=╠═╡
 begin
 	if plot_panels
 		Plots.scatter3d(
@@ -419,7 +445,6 @@ begin
 			title = "PS hull with waterline panels marked", aspect_ratio=:equal)
 	end
 end
-  ╠═╡ =#
 
 # ╔═╡ 8546b716-93fc-4372-81be-f72566f8ad9d
 md"""
@@ -428,22 +453,10 @@ Using the ```solve_sources``` function the flow around the two hulls can be mode
 """
 
 # ╔═╡ 277b39c7-d1a6-44dc-ab94-0df434f45ebc
-qᵈ, psᵈ, Aᵈ = solve_sources(pᵈ; Fn=0.2)
+qᵈ, psᵈ, Aᵈ = solve_sources(pᵈ; Fn=0.2);
 
 # ╔═╡ e0563b74-fc82-417c-84e9-dac981767d12
 qʰ, psʰ, Aʰ = solve_sources(pʰ; demi=true, Fn=0.2);
-
-# ╔═╡ 9998b3e0-a799-42a5-889a-91908d1268dd
-begin
-plotly()
-plot(
-Plots.contourf(-2:0.1:2,-2:0.1:2, (x,y)->2ζ(x,y,qᵈ, pᵈ ;psᵈ...),
-	c=:balance, aspect_ratio=:equal),
-Plots.contourf(-2:0.1:2,-2:0.1:2, (x,y)->2ζ(x,y,qʰ,pʰ ;psʰ...),
-	c=:balance, aspect_ratio=:equal),
-
-layout=(1, 2), size=(600,300))
-end
 
 # ╔═╡ 859fdcec-a811-44c7-84cc-1a6166332cf1
 md"""
@@ -463,7 +476,7 @@ begin
 	Cwᵈ = steady_force(qᵈ, pᵈ; psᵈ)[1]
 	Cwʰ = steady_force(qʰ, pʰ; psʰ)[1]
 	println("Cw full hull: $(Cwᵈ). Half hull: $(Cwʰ)")
-	println("Differnece: $(Cwᵈ - Cwʰ)")
+	println("Difference: $(Cwᵈ - Cwʰ)")
 end
 
 # ╔═╡ f9c1d5fb-bf0c-4062-ba46-f6855a6f1961
@@ -748,26 +761,64 @@ The cause of the error and lack of convergence is unknown at the time of writing
 # ╠═╡ disabled = true
 #=╠═╡
 begin
-data_dir = joinpath(@__DIR__, "data", "grid_convergence");
-files = readdir(data_dir);
-resistances_full = Dict(0=>(0.0, 0.0))
-resistances_half = Dict(0=>(0.0, 0.0))
-for file in files
-    demi = false
-    if occursin("half", file)
-        demi = true;
-    end
-	
-    panels, _, _, h_mean = importMesh(joinpath(data_dir, file));
-	if panels != nothing
-	    q, ps, A = solve_sources(panels; demi=demi, verbose=false);
-		Cw = steady_force(q, panels; ps)[1]
-		demi || (resistances_full[length(panels)] = (h_mean, Cw))
-		demi && (resistances_half[length(panels)] = (h_mean, Cw))
+	data_dir = joinpath(@__DIR__, "data", "grid_convergence");
+	files = readdir(data_dir);
+	resistances_full = Dict(0=>(0.0, 0.0))
+	resistances_half = Dict(0=>(0.0, 0.0))
+	for file in files
+	    demi = false
+	    if occursin("half", file)
+	        demi = true;
+	    end
+		
+	    panels, _, _, h_mean = importMesh(joinpath(data_dir, file));
+		if panels != nothing
+		    q, ps, A = solve_sources(panels; demi=demi, verbose=false);
+			Cw = steady_force(q, panels; ps)[1]
+			demi || (resistances_full[length(panels)] = (h_mean, Cw))
+			demi && (resistances_half[length(panels)] = (h_mean, Cw))
+		end
 	end
 end
-end
   ╠═╡ =#
+
+# ╔═╡ 27198c30-f4ae-45b5-a874-c7a03959477a
+nothing
+
+# ╔═╡ 4d344c68-f99a-4df5-be6f-cdf4cff29731
+md"""
+## Conclusion
+"""
+
+# ╔═╡ c2437329-a343-4909-af0a-55820fcce5b3
+md"""
+This notebook outlined a study into the use of Grasshopper3D be used to create complex hull shapes compatible with the NeumannKelvin.jl package. 
+
+First, it has been investigated what workflow is required in order to retrieve a hull description that is usable with the NeumannKelvin packages. It has been found that the hull format is to be exported as a JSON file. Furthermore, three functions have been written in order to convert the input into a hull description compatible with the NeumannKelvin packages: "importMesh", "createPanel" and "psShape".
+
+After that, the wave pattern induced by the hull shape has been analyzed using the NeumannKelvin packages. This wave pattern was then compared to the wave pattern induced by a wigley hull that has been modified such that its shape is comparable to that of the grasshopper input hull. While the absolute values of the wave patterns display unphysical behaviour, their shapes resemble both eachother, and a wave pattern that is intuitively expected for the hull shapes. Therefore it has been concluded that, while this study was not able to accurately define the wave patern that is induced by a complex hull shape, it is considered possible with the employed methodology.
+
+Addtionally, the use of a demi-hull in order to improve processing ability has been studied. Since neither the model for the demi-hull nor the full model displayed converging behaviour, the answer to this subquestion remains indifferent. 
+
+Finally, it has been concluded that the study above has not been able to compute valid results. However, given more time, the methodology outlined above is considered promissing in the field of complex potential flow modelling.
+
+"""
+
+# ╔═╡ fcd9dd5a-1d3a-4255-94d5-ac2d9f90a4d1
+nothing
+
+# ╔═╡ e77289b9-b7d6-4a20-9b09-777ee67f4a1a
+md"""
+## References
+[1] Weymouth, G., NumericalShipHydro repository, Available at: https://github.com/weymouth/NumericalShipHydro/tree/main/notebooks/geometries.jl
+(Accessed: 4 March 2025)
+
+[2] Davidson, S. About Grasshopper, Grasshopper. Available at: https://www.grasshopper3d.com/ (Accessed: 14 March 2025)
+
+[3] Weymouth, G., NumericalShipHydro repository, Available at: https://github.com/weymouth/NumericalShipHydro/tree/main//wigley.jl
+(Accessed: 4 March 2025)
+
+"""
 
 # ╔═╡ b40cf08b-81ef-4055-9cdc-e7ef647a4830
 # ╠═╡ disabled = true
@@ -826,57 +877,31 @@ begin
 end
   ╠═╡ =#
 
-	
-nothing
-
-# ╔═╡ 4d344c68-f99a-4df5-be6f-cdf4cff29731
-md"""
-## Conclusion
-"""
-
-# ╔═╡ c2437329-a343-4909-af0a-55820fcce5b3
-md"""
-This notebook outlined a study into the use of Grasshopper3D be used to create complex hull shapes compatible with the NeumannKelvin.jl package. 
-
-First, it has been investigated what workflow is required in order to retrieve a hull description that is usable with the NeumannKelvin packages. It has been found that the hull format is to be exported as a JSON file. Furthermore, three functions have been written in order to convert the input into a hull description compatible with the NeumannKelvin packages: "importMesh", "createPanel" and "psShape".
-
-After that, the wave pattern induced by the hull shape has been analyzed using the NeumannKelvin packages. This wave pattern was then compared to the wave pattern induced by a wigley hull that has been modified such that its shape is comparable to that of the grasshopper input hull. While the absolute values of the wave patterns display unphysical behaviour, their shapes resemble both eachother, and a wave pattern that is intuitively expected for the hull shapes. Therefore it has been concluded that, while this study was not able to accurately define the wave patern that is induced by a complex hull shape, it is considered possible with the employed methodology.
-
-Addtionally, the use of a demi-hull in order to improve processing ability has been studied. Since neither the model for the demi-hull nor the full model displayed converging behaviour, the answer to this subquestion remains indifferent. 
-
-Finally, it has been concluded that the study above has not been able to compute valid results. However, given more time, the methodology outlined above is considered promissing in the field of complex potential flow modelling.
-"""
-
-# ╔═╡ 1d56fa89-f345-4502-b7da-3128b62384de
-nothing
-
-# ╔═╡ e77289b9-b7d6-4a20-9b09-777ee67f4a1a
-md"""
-## References
-[1] Weymouth, G., NumericalShipHydro repository, Available at: https://github.com/weymouth/NumericalShipHydro/tree/main/notebooks/geometries.jl
-(Accessed: 4 March 2025)
-
-[2] Davidson, S. About Grasshopper, Grasshopper. Available at: https://www.grasshopper3d.com/ (Accessed: 14 March 2025)
-
-[3] Weymouth, G., NumericalShipHydro repository, Available at: https://github.com/weymouth/NumericalShipHydro/tree/main//wigley.jl
-(Accessed: 4 March 2025)
-
-"""
+# ╔═╡ 2adecdf9-45d8-4c18-8227-fb0a554ea3ca
+using NeumannKelvin, Markdown, Plots
 
 # ╔═╡ 2bc4a9ed-2e7a-4eb9-8e1d-37939b665753
 using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, Plots, PlotlyBase,PlotlyKaleido, PlutoUI
 
-# ╔═╡ 2adecdf9-45d8-4c18-8227-fb0a554ea3ca
-# ╠═╡ disabled = true
-#=╠═╡
-using NeumannKelvin, Markdown, Plots
-  ╠═╡ =#
+# ╔═╡ 9998b3e0-a799-42a5-889a-91908d1268dd
+begin
+plotly()
+p = plot(
+Plots.contourf(-2:0.1:2,-2:0.1:2, (x,y)->2ζ(x,y,qᵈ, pᵈ ;psᵈ...),
+	c=:balance, aspect_ratio=:equal),
+Plots.contourf(-2:0.1:2,-2:0.1:2, (x,y)->2ζ(x,y,qʰ,pʰ ;psʰ...),
+	c=:balance, aspect_ratio=:equal),
+
+layout=(1, 2), size=(600,300))
+
+end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 NeumannKelvin = "7f078b06-e5c4-4cf8-bb56-b92882a0ad03"
 PlotlyBase = "a03496cd-edff-5a9b-9e67-9cda94a718b5"
 PlotlyKaleido = "f2990250-8cf9-495f-b13a-cce12b45703c"
@@ -2516,33 +2541,23 @@ version = "1.4.1+2"
 # ╟─223f5aa4-fa41-4414-94b3-6b125e9091e0
 # ╟─7e195849-db71-401b-8c3c-68c712135390
 # ╠═3006e2d4-c8b9-48a3-9857-5ab15b59238e
-# ╠═a0c223be-1c3e-4fc2-aa5b-e6b6e077eb40
-# ╠═b2203672-3079-49ec-a7f4-e09804136b86
-# ╟─8546b716-93fc-4372-81be-f72566f8ad9d
-# ╠═277b39c7-d1a6-44dc-ab94-0df434f45ebc
-# ╠═f34a6fa6-2d59-41ad-93fd-e431c52357c9
-# ╠═860dc015-a6f8-44e8-81d4-3c3391cef7dd
-# ╠═301d6aed-a9f6-4a3c-9a41-0a4f693e1355
-# ╠═9998b3e0-a799-42a5-889a-91908d1268dd
-# ╠═744044c4-0ca8-400c-b049-71e16ef052d9
-# ╟─9fef423f-6f85-48ab-86fa-7687af6ce184
-# ╠═580e10df-bdea-4ad7-aa99-facacc160e90
+# ╠═2860ce20-e932-4205-8219-492696f4106c
 # ╟─a0c223be-1c3e-4fc2-aa5b-e6b6e077eb40
 # ╟─b2203672-3079-49ec-a7f4-e09804136b86
 # ╟─8546b716-93fc-4372-81be-f72566f8ad9d
 # ╠═277b39c7-d1a6-44dc-ab94-0df434f45ebc
 # ╠═e0563b74-fc82-417c-84e9-dac981767d12
-# ╟─9998b3e0-a799-42a5-889a-91908d1268dd
+# ╠═9998b3e0-a799-42a5-889a-91908d1268dd
 # ╟─859fdcec-a811-44c7-84cc-1a6166332cf1
 # ╠═e2642f16-d6e9-4d5f-8873-887d733a4013
 # ╠═05347ca0-89b9-4f40-8c97-091b07c0cddf
 # ╠═229c3961-a2b8-43ea-ab5a-2574f9c1a809
 # ╟─f9c1d5fb-bf0c-4062-ba46-f6855a6f1961
-# ╠═9fef423f-6f85-48ab-86fa-7687af6ce184
+# ╟─9fef423f-6f85-48ab-86fa-7687af6ce184
 # ╠═110b514a-6666-48f6-ba52-4b188caf9ca3
 # ╟─3079d163-b5b0-4ad8-aaeb-0c32fe721f21
 # ╟─9a2dc360-058b-4ba9-a477-bad65e2d2dae
-# ╠═1c89e4be-6cb6-4c0b-a3b4-b48e07617470
+# ╟─1c89e4be-6cb6-4c0b-a3b4-b48e07617470
 # ╟─e924cf54-c392-4728-bc0f-89b3722f9b5a
 # ╟─461ee2cd-e445-4503-9cc2-0fa43d874464
 # ╟─68af513d-c457-49f8-ba7c-d6ca7c142975
@@ -2550,38 +2565,13 @@ version = "1.4.1+2"
 # ╟─08674063-c98a-403e-bf93-354da6e26a34
 # ╟─2652de72-75c0-4737-abea-e83c18ef73a8
 # ╟─5e4d5334-46b2-4935-8f55-27b06a6d1cc5
-# ╟─96f047dc-eb1c-4520-bad0-b4670fbafe57
-# ╠═56a91a7a-1e7f-400d-b18b-4d35f66238e8
-# ╠═cb9e519b-d5e3-440f-8d5b-bc337fe1788e
-# ╠═dee1baa0-8614-465c-b232-afba4df9fe5f
-# ╠═8195e9a2-e85f-4e15-aba9-1096add9b77c
-# ╠═d61b5b53-0ab1-4fee-8ce1-1845c54e918e
-# ╠═3a72df8a-79a0-4087-beff-f839a5ddc133
-# ╠═9d9ad896-0388-4802-bb0e-bc7f62db127f
-# ╠═29891ae5-f88d-4618-acb2-ecf70cb4ed21
-# ╠═42f16fad-8b1f-4292-8834-d25cd1eaa3db
 # ╟─8a8e28a6-0b5a-49cf-9035-97c9bb59214a
 # ╠═beb1d70b-d5eb-4f0e-9c40-3c9abbcf63b6
-# ╠═b40cf08b-81ef-4055-9cdc-e7ef647a4830
-# ╠═2ccb150c-a71f-42eb-b228-a3f301c0fa93
-# ╟─e315acb0-f0a0-4a2d-adc3-c510e0f46997
-# ╠═08674063-c98a-403e-bf93-354da6e26a34
-# ╠═2652de72-75c0-4737-abea-e83c18ef73a8
-# ╠═5e4d5334-46b2-4935-8f55-27b06a6d1cc5
-# ╟─8a8e28a6-0b5a-49cf-9035-97c9bb59214a
-# ╠═beb1d70b-d5eb-4f0e-9c40-3c9abbcf63b6
-# ╠═b40cf08b-81ef-4055-9cdc-e7ef647a4830
-# ╟─b00ddd51-7a31-4809-9830-05e76e2ff0f3
-# ╟─073d70ef-da1e-47dd-b0e5-a532b936c883
-# ╟─39c8e8f6-6852-4f3e-84b3-72e8c4e3db11
-# ╟─00bf348b-9e12-4486-a772-3fe1c26234cd
-# ╟─79d035b0-df28-4e7b-bba2-f484fd24e14c
-# ╟─6a72863a-c5d6-46d3-b2ce-ffe420a49549
-# ╟─b0df71f8-b3a3-477a-b4aa-5702491840e1
-# ╟─0cbe5265-a2d2-45b6-bc8a-60173db020f0
+# ╟─b40cf08b-81ef-4055-9cdc-e7ef647a4830
+# ╟─27198c30-f4ae-45b5-a874-c7a03959477a
 # ╟─4d344c68-f99a-4df5-be6f-cdf4cff29731
 # ╟─c2437329-a343-4909-af0a-55820fcce5b3
-# ╟─1d56fa89-f345-4502-b7da-3128b62384de
+# ╟─fcd9dd5a-1d3a-4255-94d5-ac2d9f90a4d1
 # ╠═e77289b9-b7d6-4a20-9b09-777ee67f4a1a
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
