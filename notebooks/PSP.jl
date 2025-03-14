@@ -222,9 +222,9 @@ function importMesh(filename::String);
 
     face_count = length(faces);
     println("Number of faces: $(face_count)");
-    if face_count > 6000 # Protecting ourselves from crashing (again)
-        println("Too many faces ($(face_count) > 6000), skipping import");
-        return nothing, nothing, 0.0;
+    if face_count > 10000 # Protecting ourselves from crashing (again)
+        println("Too many faces ($(face_count) > 10000), skipping import");
+        return nothing, nothing, 0.0, nothing;
     end
 
 	# Creating panels from the vertices, normals and faces from Grasshopper
@@ -447,8 +447,8 @@ md"""
 begin
 data_dir = joinpath(@__DIR__, "..", "src", "data", "grid_convergence");
 files = readdir(data_dir);
-resistances_full = Dict(0=>0)
-resistances_half = Dict(0=>0)
+resistances_full = Dict(0=>(0.0, 0.0))
+resistances_half = Dict(0=>(0.0, 0.0))
 for file in files
     demi = false
     if occursin("half", file)
@@ -456,13 +456,87 @@ for file in files
     end
 	
     panels, _, _, h_mean = importMesh(joinpath(data_dir, file));
-    q, ps, A = solve_sources(panels; demi=demi, verbose=false);
-	Cw = steady_force(q, panels; ps)[1]
-	demi || (resistances_full[repr(h_mean)] = Cw)
-	demi && (resistances_half[repr(h_mean)] = Cw)
+	if panels != nothing
+	    q, ps, A = solve_sources(panels; demi=demi, verbose=false);
+		Cw = steady_force(q, panels; ps)[1]
+		demi || (resistances_full[length(panels)] = (h_mean, Cw))
+		demi && (resistances_half[length(panels)] = (h_mean, Cw))
+	end
 end
-println(resistances_full)
 end
+
+# ╔═╡ b40cf08b-81ef-4055-9cdc-e7ef647a4830
+begin
+    # Sort the data by number of panels
+    sorted_full = sort(collect(filter(p -> p.first != 0, resistances_full)))
+    sorted_half = sort(collect(filter(p -> p.first != 0, resistances_half)))
+    
+    # Extract panel counts, mean panel sizes, and resistance coefficients
+    panel_counts_full = first.(sorted_full)
+    h_mean_full = [p[2][1] for p in sorted_full]
+    Cw_full = [p[2][2] for p in sorted_full]
+    
+    panel_counts_half = first.(sorted_half)
+    h_mean_half = [p[2][1] for p in sorted_half]
+    Cw_half = [p[2][2] for p in sorted_half]
+    
+    # Create main plot with panel counts as x-axis
+    p = plot(
+        panel_counts_full, Cw_full, 
+        label="Full hull model", 
+        marker=:circle,
+        linestyle=:solid,
+        linewidth=2,
+        markersize=6,
+        color=:blue,
+        xlabel="Number of panels (Full ship equivalent)",
+        ylabel="Wave resistance coefficient (Cw)",
+        title="Grid Convergence Analysis",
+        legend=:topright
+    )
+    
+    plot!(
+        panel_counts_half .* 2, Cw_half,
+        label="Half hull model",
+        marker=:square,
+        linestyle=:dash,
+        linewidth=2,
+        markersize=6,
+        color=:red
+    )
+    
+    # Create a second plot with h_mean as x-axis (but will be used only for twinx)
+    p2 = plot(
+        h_mean_full, Cw_full,
+        xlabel="Mean panel size (h_mean)",
+        grid=false,
+        legend=false,
+        ticks=nothing,
+        showaxis=false
+    )
+    
+    # Display with both scales
+    plot(p, xticks=:native)
+end
+
+# ╔═╡ 2ccb150c-a71f-42eb-b228-a3f301c0fa93
+begin
+data_dir_bigger = joinpath(@__DIR__, "..", "src", "data", "grid_convergence_bigger");
+full_path = joinpath(data_dir_bigger, "PS_hull_0313_17-14_double_6894p.json")
+half_path = joinpath(data_dir_bigger, "PS_hull_0313_17-14_half_6193p.json")
+	
+panels_full_big, _, _, _ = importMesh(full_path)
+panels_half_big, _, _, _ = importMesh(half_path)
+	
+q_full_big, ps_full_big, _ = solve_sources(panels_full_big; demi=false, verbose=false);
+q_half_big, ps_half_big, _ = solve_sources(panels_half_big; demi=true, verbose=false);
+	
+println(added_mass(panels_full_big; ps_full_big))
+println(added_mass(panels_half_big; ps_half_big))
+end
+
+# ╔═╡ e315acb0-f0a0-4a2d-adc3-c510e0f46997
+
 
 # ╔═╡ b00ddd51-7a31-4809-9830-05e76e2ff0f3
 begin
@@ -2241,7 +2315,7 @@ version = "1.4.1+2"
 # ╠═520977d9-d16c-4dc1-83e2-6d6bd058662c
 # ╟─bc054f16-5c7a-4b8d-b9af-abe0e1965573
 # ╟─e513f638-a083-4bfb-aa3e-6450d37001b5
-# ╟─40a64ec4-cdaa-497d-9283-c3c1da062d58
+# ╠═40a64ec4-cdaa-497d-9283-c3c1da062d58
 # ╟─5fa06031-f734-42e7-95bf-fd0daf506687
 # ╠═98e84ada-af82-4715-b894-6a9e1153ebb8
 # ╠═264da090-b49b-4203-903c-a2fe81f165aa
@@ -2271,6 +2345,9 @@ version = "1.4.1+2"
 # ╠═42f16fad-8b1f-4292-8834-d25cd1eaa3db
 # ╟─8a8e28a6-0b5a-49cf-9035-97c9bb59214a
 # ╠═beb1d70b-d5eb-4f0e-9c40-3c9abbcf63b6
+# ╠═b40cf08b-81ef-4055-9cdc-e7ef647a4830
+# ╠═2ccb150c-a71f-42eb-b228-a3f301c0fa93
+# ╠═e315acb0-f0a0-4a2d-adc3-c510e0f46997
 # ╟─b00ddd51-7a31-4809-9830-05e76e2ff0f3
 # ╟─073d70ef-da1e-47dd-b0e5-a532b936c883
 # ╠═c45ce64f-2ae1-4120-adad-24c1f843498c
