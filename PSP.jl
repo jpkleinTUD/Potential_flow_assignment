@@ -227,8 +227,6 @@ The create panels function is used to construct a panel from 4 vertex points. Th
 
 
 # ╔═╡ 7812bbc4-a0a9-42a0-a0ce-9da86ad380b7
-# ╠═╡ disabled = true
-#=╠═╡
 function createPanel(vertices::Array{Array{Float64, 1}, 1},
 					 normals::Array{Array{Float64, 1}, 1}, 
 					 faces::Array{Int64, 1});
@@ -267,7 +265,6 @@ function createPanel(vertices::Array{Array{Float64, 1}, 1},
 end
 
 
-  ╠═╡ =#
 
 # ╔═╡ e717c9c8-dae4-48cf-ad4d-d50d94652a33
 md"""
@@ -276,8 +273,6 @@ This function simply creates a Plots shape based on the parameters of the model 
 """
 
 # ╔═╡ cb4c1429-bf61-4cb0-8c4a-11433073d8a9
-# ╠═╡ disabled = true
-#=╠═╡
 function psShape(ship_info::Dict{String, Any});
 		length = float(ship_info["length"]);
 		bow_length = float(ship_info["bow"]["length"]);
@@ -324,11 +319,8 @@ function psShape(ship_info::Dict{String, Any});
 	
 end
 
-  ╠═╡ =#
 
 # ╔═╡ 202dea43-7c21-4c75-b3ae-6e351a384bb7
-# ╠═╡ disabled = true
-#=╠═╡
 function importMesh(filename::String);
 	import_data:: Dict{String, Any} = JSON.parsefile(filename);
 	toArray(str:: String) = parse.(Float64, split(strip(str, ['{', '}']), ","));
@@ -357,7 +349,6 @@ function importMesh(filename::String);
 	return panels, shape, total_length, h_mean;
 
 end
-  ╠═╡ =#
 
 # ╔═╡ 1e1562d3-e70b-4db8-84df-1587b64278cb
 
@@ -913,87 +904,6 @@ end
   ╠═╡ =#
 
 # ╔═╡ e315acb0-f0a0-4a2d-adc3-c510e0f46997
-
-
-# ╔═╡ b00ddd51-7a31-4809-9830-05e76e2ff0f3
-begin
-	par_range(ref) = vcat([ref * (1 - p) for p in 0.1:0.1:0.5][end:-1:1], ref, [ref * (1 + p) for p in 0.1:0.1:0.5])
-	slot_width = par_range(59)		#echte waarde
-	slot_length = par_range(122)	#echte waarde	
-	bow_width = par_range(32.5)	#echte waarde
-	hor_br = par_range(3)			#Niet publiek bekend, schatten met rhino
-	ver_br = par_range(5)			#Niet publiek bekend, schatten met rhino
-	out_bk = par_range(1)			#Niet publiek bekend, schatten met rhino
-	inn_bk = par_range(1)			#Niet publiek bekend, schatten met rhino
-
-	vessel_length = 382  #CHANGE DEPENDING ON STEP 1
-	compute_speeds(length; num_points=10) = round.(range(0, 1, length=num_points) .* sqrt(length * 9.81), digits=2)
-	speed_range = compute_speeds(vessel_length)
-	froude_range = round.(range(0, 1, length=10), digits=2)
-	
-	nothing
-end
-
-# ╔═╡ c45ce64f-2ae1-4120-adad-24c1f843498c
-# ╠═╡ disabled = true
-#=╠═╡
-begin
-	using DataFrames
-	value = ["Speed range [m/s]", "Froude number"]
-	
-	speed_ranges = [speed_range, froude_range]
-	
-	df_speed = DataFrame(Value = value, Range = speed_ranges)
-end
-  ╠═╡ =#
-
-# ╔═╡ 073d70ef-da1e-47dd-b0e5-a532b936c883
-md"""
-## The study
-
- 1. **The importance of total vessel length** 
-
- 2. **Computing the speed range and the parameter variance range for all variables**
-Based on the vessel length computed above, the speed range over which each hull geometry is to be evaluated becomes:
-"""
-
-# ╔═╡ 39c8e8f6-6852-4f3e-84b3-72e8c4e3db11
-md"""
-Furthermore, the variance range for all parameters are displayed in the table below. For the all ranges, the middle parameter is equal to the real world value. Note that not for some parameters, the real world value is not known. These values have been visually approximated in Rhino, which is labled in the source column as "approximated".
-"""
-
-# ╔═╡ 00bf348b-9e12-4486-a772-3fe1c26234cd
-# ╠═╡ disabled = true
-#=╠═╡
-begin
-	parameters = ["Slot width", "Slot length", "Bow width", "Horizontal bow radius", "Vertical bow radius", "Outer bilge keel", "Inner bilge keel"]
-	sources = ["Real world value", "Real world value", "Real world value", "Approximated", "Approximated", "Approximated", "Approximated"]
-	
-	ranges = [slot_width, slot_length, bow_width, hor_br, ver_br, out_bk, inn_bk]
-	
-	df_geometry = DataFrame(Parameter = parameters, Range = ranges, Source = sources)
-end
-  ╠═╡ =#
-
-# ╔═╡ 79d035b0-df28-4e7b-bba2-f484fd24e14c
-md"""
- 3. **Computing the wave height for the full speed and parameter variance range**
-
- 4. **Computing the varience in wave height caused by varying the geometric parameter**
-
- 5. **Rank the parameters based on descending varience in wave height**
-
-"""
-
-# ╔═╡ 6a72863a-c5d6-46d3-b2ce-ffe420a49549
-nothing
-
-# ╔═╡ b0df71f8-b3a3-477a-b4aa-5702491840e1
-md"""
-## Results
-"""
-
-# ╔═╡ 0cbe5265-a2d2-45b6-bc8a-60173db020f0
 nothing
 
 # ╔═╡ 4d344c68-f99a-4df5-be6f-cdf4cff29731
@@ -1014,6 +924,22 @@ Addtionally, the use of a demi-hull in order to improve processing ability has b
 Finally, it has been concluded that the study above has not been able to compute valid results. However, given more time, the methodology outlined above is considered promissing in the field of complex potential flow modelling.
 """
 
+# ╔═╡ 1d56fa89-f345-4502-b7da-3128b62384de
+nothing
+
+# ╔═╡ e77289b9-b7d6-4a20-9b09-777ee67f4a1a
+md"""
+## References
+[1] Weymouth, G., NumericalShipHydro repository, Available at: https://github.com/weymouth/NumericalShipHydro/tree/main/notebooks/geometries.jl
+(Accessed: 4 March 2025)
+
+[2] Davidson, S. About Grasshopper, Grasshopper. Available at: https://www.grasshopper3d.com/ (Accessed: 14 March 2025)
+
+[3] Weymouth, G., NumericalShipHydro repository, Available at: https://github.com/weymouth/NumericalShipHydro/tree/main//wigley.jl
+(Accessed: 4 March 2025)
+
+"""
+
 # ╔═╡ 2bc4a9ed-2e7a-4eb9-8e1d-37939b665753
 using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, Plots, PlotlyBase,PlotlyKaleido, PlutoUI
 
@@ -1026,7 +952,6 @@ using NeumannKelvin, Markdown, Plots
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
-DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
@@ -1038,7 +963,6 @@ PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-DataFrames = "~1.7.0"
 JSON = "~0.21.4"
 NeumannKelvin = "~0.5.1"
 PlotlyBase = "~0.8.20"
@@ -1054,7 +978,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.3"
 manifest_format = "2.0"
-project_hash = "4103bb7c58447756354e1d4ceb582962036115f5"
+project_hash = "42535031623bae8e671c6d47bb9b952014445cb0"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -1284,21 +1208,10 @@ git-tree-sha1 = "439e35b0b36e2e5881738abc8857bd92ad6ff9a8"
 uuid = "d38c429a-6771-53c6-b99e-75d170b6e991"
 version = "0.6.3"
 
-[[deps.Crayons]]
-git-tree-sha1 = "249fe38abf76d48563e2f4556bebd215aa317e15"
-uuid = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
-version = "4.1.1"
-
 [[deps.DataAPI]]
 git-tree-sha1 = "abe83f3a2f1b857aac70ef8b269080af17764bbe"
 uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
 version = "1.16.0"
-
-[[deps.DataFrames]]
-deps = ["Compat", "DataAPI", "DataStructures", "Future", "InlineStrings", "InvertedIndices", "IteratorInterfaceExtensions", "LinearAlgebra", "Markdown", "Missings", "PooledArrays", "PrecompileTools", "PrettyTables", "Printf", "Random", "Reexport", "SentinelArrays", "SortingAlgorithms", "Statistics", "TableTraits", "Tables", "Unicode"]
-git-tree-sha1 = "fb61b4812c49343d7ef0b533ba982c46021938a6"
-uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-version = "1.7.0"
 
 [[deps.DataStructures]]
 deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
@@ -1550,19 +1463,6 @@ git-tree-sha1 = "4da0f88e9a39111c2fa3add390ab15f3a44f3ca3"
 uuid = "22cec73e-a1b8-11e9-2c92-598750a2cf9c"
 version = "0.3.1"
 
-[[deps.InlineStrings]]
-git-tree-sha1 = "6a9fde685a7ac1eb3495f8e812c5a7c3711c2d5e"
-uuid = "842dd82b-1e85-43dc-bf29-5d0ee9dffc48"
-version = "1.4.3"
-
-    [deps.InlineStrings.extensions]
-    ArrowTypesExt = "ArrowTypes"
-    ParsersExt = "Parsers"
-
-    [deps.InlineStrings.weakdeps]
-    ArrowTypes = "31f734f8-188a-4ce0-8406-c8a06bd891cd"
-    Parsers = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-
 [[deps.IntelOpenMP_jll]]
 deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl"]
 git-tree-sha1 = "0f14a5456bdc6b9731a5682f439a672750a09e48"
@@ -1583,11 +1483,6 @@ weakdeps = ["Dates", "Test"]
     [deps.InverseFunctions.extensions]
     InverseFunctionsDatesExt = "Dates"
     InverseFunctionsTestExt = "Test"
-
-[[deps.InvertedIndices]]
-git-tree-sha1 = "6da3c4316095de0f5ee2ebd875df8721e7e0bdbe"
-uuid = "41ab1584-1d38-5bbf-9106-f11c6c58b48f"
-version = "1.3.1"
 
 [[deps.IrrationalConstants]]
 git-tree-sha1 = "e2222959fbc6c19554dc15174c81bf7bf3aa691c"
@@ -2005,12 +1900,6 @@ git-tree-sha1 = "5152abbdab6488d5eec6a01029ca6697dff4ec8f"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 version = "0.7.23"
 
-[[deps.PooledArrays]]
-deps = ["DataAPI", "Future"]
-git-tree-sha1 = "36d8b4b899628fb92c2749eb488d884a926614d3"
-uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
-version = "1.4.3"
-
 [[deps.PrecompileTools]]
 deps = ["Preferences"]
 git-tree-sha1 = "5aa36f7049a63a1528fe8f7c3f2113413ffd4e1f"
@@ -2022,12 +1911,6 @@ deps = ["TOML"]
 git-tree-sha1 = "9306f6085165d270f7e3db02af26a400d580f5c6"
 uuid = "21216c6a-2e73-6563-6e65-726566657250"
 version = "1.4.3"
-
-[[deps.PrettyTables]]
-deps = ["Crayons", "LaTeXStrings", "Markdown", "PrecompileTools", "Printf", "Reexport", "StringManipulation", "Tables"]
-git-tree-sha1 = "1101cd475833706e4d0e7b122218257178f48f34"
-uuid = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
-version = "2.4.0"
 
 [[deps.Printf]]
 deps = ["Unicode"]
@@ -2150,12 +2033,6 @@ git-tree-sha1 = "3bac05bc7e74a75fd9cba4295cde4045d9fe2386"
 uuid = "6c6a2e73-6563-6170-7368-637461726353"
 version = "1.2.1"
 
-[[deps.SentinelArrays]]
-deps = ["Dates", "Random"]
-git-tree-sha1 = "712fb0231ee6f9120e005ccd56297abbc053e7e0"
-uuid = "91c51154-3ec4-41a3-a24f-3f23e20d615c"
-version = "1.4.8"
-
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 version = "1.11.0"
@@ -2257,12 +2134,6 @@ deps = ["AliasTables", "DataAPI", "DataStructures", "LinearAlgebra", "LogExpFunc
 git-tree-sha1 = "29321314c920c26684834965ec2ce0dacc9cf8e5"
 uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 version = "0.34.4"
-
-[[deps.StringManipulation]]
-deps = ["PrecompileTools"]
-git-tree-sha1 = "725421ae8e530ec29bcbdddbe91ff8053421d023"
-uuid = "892a3eda-7b42-436c-8928-eab12a02cf0e"
-version = "0.4.1"
 
 [[deps.StyledStrings]]
 uuid = "f489334b-da3d-4c2e-b8f0-e476e12c162b"
@@ -2759,17 +2630,10 @@ version = "1.4.1+2"
 # ╠═beb1d70b-d5eb-4f0e-9c40-3c9abbcf63b6
 # ╠═b40cf08b-81ef-4055-9cdc-e7ef647a4830
 # ╠═2ccb150c-a71f-42eb-b228-a3f301c0fa93
-# ╠═e315acb0-f0a0-4a2d-adc3-c510e0f46997
-# ╟─b00ddd51-7a31-4809-9830-05e76e2ff0f3
-# ╟─073d70ef-da1e-47dd-b0e5-a532b936c883
-# ╠═c45ce64f-2ae1-4120-adad-24c1f843498c
-# ╟─39c8e8f6-6852-4f3e-84b3-72e8c4e3db11
-# ╟─00bf348b-9e12-4486-a772-3fe1c26234cd
-# ╟─79d035b0-df28-4e7b-bba2-f484fd24e14c
-# ╟─6a72863a-c5d6-46d3-b2ce-ffe420a49549
-# ╟─b0df71f8-b3a3-477a-b4aa-5702491840e1
-# ╟─0cbe5265-a2d2-45b6-bc8a-60173db020f0
+# ╟─e315acb0-f0a0-4a2d-adc3-c510e0f46997
 # ╟─4d344c68-f99a-4df5-be6f-cdf4cff29731
 # ╟─c2437329-a343-4909-af0a-55820fcce5b3
+# ╟─1d56fa89-f345-4502-b7da-3128b62384de
+# ╠═e77289b9-b7d6-4a20-9b09-777ee67f4a1a
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
