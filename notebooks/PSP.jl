@@ -4,22 +4,39 @@
 using Markdown
 using InteractiveUtils
 
-# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
-macro bind(def, element)
-    #! format: off
-    quote
-        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
-        local el = $(esc(element))
-        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
-        el
-    end
-    #! format: on
-end
+# ╔═╡ 2adecdf9-45d8-4c18-8227-fb0a554ea3ca
+using NeumannKelvin, Markdown, Plots
+
+# ╔═╡ bc054f16-5c7a-4b8d-b9af-abe0e1965573
+using NeumannKelvin:kelvin,wavelike,nearfield
+
+# ╔═╡ fa570bdd-3772-4750-980d-d75cf268ffcf
+md"""
+
+# Potential flow assignment - Pioneering Spirit slot variance study
+
+This notebook will cover the variance study of the dimensions of the Pioneering Spirit's slot using potential flow. It has been constructed by Albert Aperghis (5032881) and Jasper Klein (5343569).
+
+Ships come in all shapes and size's. Some are small, some are large and some are absolutely ridiculously large. Enter the Pioneering Spirit. With it's 1,000,000 m^3 maximum displacement, the vessel can be considered the largest vessel in the world based on displaced water. While this vessel boasts many remarkable features, one can't help but notice the massive missing chunk from the bow of the vessel; the slot. 
+
+![](https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/5e0a23cb8579561da9db78cd721f6f718f46b1e5/Images/PS_slot.png)
+
+While this slot provides a lot of oppertunities from an operational point of view, it also provides challanges from a wavemaking point of view. This wavemaking characteristic will be studied further in this notebook.
+
+After this introduction, the research question will be properly formulated. Next, the metholodogy used in this variance study will be explained. After that, the model that has been obtained by implementing the methodology will be validated by comparing the model to analytical and externally developed numerical results. After the model has been validated, the results from the variance study will be provided. Finally, the conclusion will provide a summary of the results of the study and will provide an answer to the research question.
+
+"""
+
+# ╔═╡ 5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
+md"""
+## Research question
+
+
+This study will discuss the effect of the various geometries of the slot on the wave height that can be observed within the slot created by foreward velocity, with the aim of ranking the influence of the geometric parameters from a wave making point of view.
+"""
 
 # ╔═╡ c7786892-73cf-4e23-bfe6-339feae6f4de
 begin
-	using Markdown
-	
 	md"""
 	## Methodology
 	In order to perform a variance study, the hull form of the Pioneering Spirit needs to be described parametrically. This has been acchieved by defining the hull in Rhino, using a Grasshopper script. The combined use of grasshopper and Rhino allows for rapid definition of multiple hulls based on the geometric parameters that are to be varied for the purpose of this study. These hullforms are then be exported as NURBS data, which is used as input for the potential flow solver. (This way of working has been validated as a potential flow assignment last year, REF Rajan). The figure below provides an overview of the Rhino-Grasshopper hull definition.
@@ -67,40 +84,6 @@ begin
 	"""
 end
 
-# ╔═╡ adc7fdd3-b339-4573-9717-34d7d4ac0324
-using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, Plots, PlotlyBase,PlotlyKaleido, PlutoUI
-
-# ╔═╡ bc054f16-5c7a-4b8d-b9af-abe0e1965573
-using NeumannKelvin:kelvin,wavelike,nearfield
-
-# ╔═╡ fa570bdd-3772-4750-980d-d75cf268ffcf
-md"""
-
-# Potential flow assignment - Pioneering Spirit slot variance study
-
-This notebook will cover the variance study of the dimensions of the Pioneering Spirit's slot using potential flow. It has been constructed by Albert Aperghis (5032881) and Jasper Klein (5343569).
-
-Ships come in all shapes and size's. Some are small, some are large and some are absolutely ridiculously large. Enter the Pioneering Spirit. With it's 1,000,000 m^3 maximum displacement, the vessel can be considered the largest vessel in the world based on displaced water. While this vessel boasts many remarkable features, one can't help but notice the massive missing chunk from the bow of the vessel; the slot. 
-
-![](https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/5e0a23cb8579561da9db78cd721f6f718f46b1e5/Images/PS_slot.png)
-
-While this slot provides a lot of oppertunities from an operational point of view, it also provides challanges from a wavemaking point of view. This wavemaking characteristic will be studied further in this notebook.
-
-After this introduction, the research question will be properly formulated. Next, the metholodogy used in this variance study will be explained. After that, the model that has been obtained by implementing the methodology will be validated by comparing the model to analytical and externally developed numerical results. After the model has been validated, the results from the variance study will be provided. Finally, the conclusion will provide a summary of the results of the study and will provide an answer to the research question.
-
-"""
-
-# ╔═╡ 2adecdf9-45d8-4c18-8227-fb0a554ea3ca
-nothing
-
-# ╔═╡ 5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
-md"""
-## Research question
-
-
-This study will discuss the effect of the various geometries of the slot on the wave height that can be observed within the slot created by foreward velocity, with the aim of ranking the influence of the geometric parameters from a wave making point of view.
-"""
-
 # ╔═╡ ef64d57f-30e6-45dd-b598-65728d31b77b
 begin
 	md"""
@@ -113,15 +96,26 @@ begin
 	"""
 end
 
+# ╔═╡ adc7fdd3-b339-4573-9717-34d7d4ac0324
+# ╠═╡ disabled = true
+#=╠═╡
+using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, Plots, PlotlyBase,PlotlyKaleido, PlutoUI
+  ╠═╡ =#
+
 # ╔═╡ aa0202ef-8dea-4c3f-a017-fe367efca375
+# ╠═╡ disabled = true
+#=╠═╡
 begin 
 	# From wigley notebook
 	reflect(x::SVector;flip=SA[1,-1,1]) = x.*flip
 	reflect(p::NamedTuple;flip=SA[1,-1,1]) = (x=reflect(p.x;flip), 
 		n=reflect(p.n;flip), dA=p.dA, x₄=reflect.(p.x₄;flip), wl=p.wl)
 end
+  ╠═╡ =#
 
 # ╔═╡ 62c1471f-5803-4b61-85fd-4a3bafde8210
+# ╠═╡ disabled = true
+#=╠═╡
 function psShape(ship_info::Dict{String, Any});
 		length = float(ship_info["length"]);
 		bow_length = float(ship_info["bow"]["length"]);
@@ -168,6 +162,7 @@ function psShape(ship_info::Dict{String, Any});
 	
 end
 
+  ╠═╡ =#
 
 # ╔═╡ f41c5399-987a-4122-b283-76f488eaabb7
 md"""### Main functions"""
@@ -175,7 +170,42 @@ md"""### Main functions"""
 # ╔═╡ e64e3e12-d797-4fd0-b2e6-c371b8aebf82
 
 
+# ╔═╡ 520977d9-d16c-4dc1-83e2-6d6bd058662c
+# ╠═╡ disabled = true
+#=╠═╡
+function importMesh(filename::String);
+	import_data:: Dict{String, Any} = JSON.parsefile(filename);
+	toArray(str:: String) = parse.(Float64, split(strip(str, ['{', '}']), ","));
+	vertices = [toArray(v) for v in import_data["verts"]];
+	normals = [toArray(f) for f in import_data["normals"]];
+	faces = [parse.(Int64, split(strip(f, ['{', '}', 'Q']), ";")) for f in import_data["faces"] if !occursin("T", f)];
+
+    face_count = length(faces);
+    println("Number of faces: $(face_count)");
+    if face_count > 10000 # Protecting ourselves from crashing (again)
+        println("Too many faces ($(face_count) > 10000), skipping import");
+        return nothing, nothing, 0.0, nothing;
+    end
+
+	# Creating panels from the vertices, normals and faces from Grasshopper
+	panels=[createPanel(vertices, normals, face) for face in faces];
+	panels = [p for p in panels if p != nothing] |> Table; # Removing ignored panels
+
+	# Creating shape for plot overlay
+	shape = psShape(import_data["ship_info"]);
+
+	total_length = import_data["ship_info"]["length"] + import_data["ship_info"]["bow"]["length"];
+	
+	# Determining the mean panel lengthscale to compare models
+	h_mean = √(sum(panels.dA)/length(panels))
+	return panels, shape, total_length, h_mean;
+
+end
+  ╠═╡ =#
+
 # ╔═╡ 1d5b75bc-9b23-473d-bc43-5d492c621d5d
+# ╠═╡ disabled = true
+#=╠═╡
 function createPanel(vertices::Array{Array{Float64, 1}, 1},
 					 normals::Array{Array{Float64, 1}, 1}, 
 					 faces::Array{Int64, 1});
@@ -214,48 +244,22 @@ function createPanel(vertices::Array{Array{Float64, 1}, 1},
 end
 
 
-
-# ╔═╡ 520977d9-d16c-4dc1-83e2-6d6bd058662c
-function importMesh(filename::String);
-	import_data:: Dict{String, Any} = JSON.parsefile(filename);
-	toArray(str:: String) = parse.(Float64, split(strip(str, ['{', '}']), ","));
-	vertices = [toArray(v) for v in import_data["verts"]];
-	normals = [toArray(f) for f in import_data["normals"]];
-	faces = [parse.(Int64, split(strip(f, ['{', '}', 'Q']), ";")) for f in import_data["faces"] if !occursin("T", f)];
-
-    face_count = length(faces);
-    println("Number of faces: $(face_count)");
-    if face_count > 10000 # Protecting ourselves from crashing (again)
-        println("Too many faces ($(face_count) > 10000), skipping import");
-        return nothing, nothing, 0.0, nothing;
-    end
-
-	# Creating panels from the vertices, normals and faces from Grasshopper
-	panels=[createPanel(vertices, normals, face) for face in faces];
-	panels = [p for p in panels if p != nothing] |> Table; # Removing ignored panels
-
-	# Creating shape for plot overlay
-	shape = psShape(import_data["ship_info"]);
-
-	total_length = import_data["ship_info"]["length"] + import_data["ship_info"]["bow"]["length"];
-	
-	# Determining the mean panel lengthscale to compare models
-	h_mean = √(sum(panels.dA)/length(panels))
-	return panels, shape, total_length, h_mean;
-
-end
+  ╠═╡ =#
 
 # ╔═╡ e513f638-a083-4bfb-aa3e-6450d37001b5
 md"""The following functions are taken from the notebooks written in class"""
 
 
 # ╔═╡ 40a64ec4-cdaa-497d-9283-c3c1da062d58
+# ╠═╡ disabled = true
+#=╠═╡
 function NeumannKelvin.kelvin(ξ,α;Fn,max_z=-1/50);
 	ξ[3]> 0 && throw(DomainError(ξ[3],"Sources must be below z=0"));
 	x,y,z = (ξ-α)/Fn^2;
 	z = min(z,max_z/Fn^2); # limit z!! 💔
 	(nearfield(x,y,z)+wavelike(x,abs(y),z))/Fn^2;
 end
+  ╠═╡ =#
 
 # ╔═╡ 5fa06031-f734-42e7-95bf-fd0daf506687
 md"""
@@ -263,6 +267,8 @@ The surface potential has been adjusted to work with the definition of the water
 """
 
 # ╔═╡ 98e84ada-af82-4715-b894-6a9e1153ebb8
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 	∫contour(x,p;Fn) = kelvin(x,p.x .* SA[1,1,0];Fn)*p.n[1]*p.dA;
 	function ∫surface(x,p;Fn,χ=true,dz=0);
@@ -273,9 +279,13 @@ begin
 	    ∫surface(x,p;kwargs...)+∫surface(x,reflect(p,flip=SA[1,-1,1]);kwargs...);
 	end
 end
+  ╠═╡ =#
 
 # ╔═╡ 264da090-b49b-4203-903c-a2fe81f165aa
+# ╠═╡ disabled = true
+#=╠═╡
 data_folder = joinpath(@__DIR__, "..", "src", "data");
+  ╠═╡ =#
 
 # ╔═╡ 7e195849-db71-401b-8c3c-68c712135390
 md"""
@@ -283,14 +293,22 @@ md"""
 """
 
 # ╔═╡ 3006e2d4-c8b9-48a3-9857-5ab15b59238e
+# ╠═╡ disabled = true
+#=╠═╡
 panels, shape, length_ps, h_mean = importMesh(joinpath(data_folder, "small_ps/PS_hull_0312_21-05_double_small_fine.json"));
+  ╠═╡ =#
 
 # ╔═╡ a0c223be-1c3e-4fc2-aa5b-e6b6e077eb40
+# ╠═╡ disabled = true
+#=╠═╡
 md"""
 Plot panels? $(@bind plot_panels CheckBox(default=false))
 """
+  ╠═╡ =#
 
 # ╔═╡ b2203672-3079-49ec-a7f4-e09804136b86
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 	if plot_panels
 		Plots.scatter3d(
@@ -300,11 +318,14 @@ begin
 			title = "PS hull with waterline panels marked", aspect_ratio=:equal)
 	end
 end
+  ╠═╡ =#
 
 # ╔═╡ 8546b716-93fc-4372-81be-f72566f8ad9d
 md"""Using the code from class the source strengths can be solved"""
 
 # ╔═╡ 277b39c7-d1a6-44dc-ab94-0df434f45ebc
+# ╠═╡ disabled = true
+#=╠═╡
 function solve_sources(panels; demi=false, Fn=0.2, verbose=false)
 	if demi
 		ps = (ϕ=∫surface_S₂,Fn=Fn)
@@ -322,8 +343,10 @@ function solve_sources(panels; demi=false, Fn=0.2, verbose=false)
 	q = A\b # solve for densities
 	return q, ps, A
 end;
+  ╠═╡ =#
 
 # ╔═╡ f34a6fa6-2d59-41ad-93fd-e431c52357c9
+#=╠═╡
 md"""
 Then the source strengths can be calculated for any given Froude Number (Lenght based)
 
@@ -331,11 +354,15 @@ Then the source strengths can be calculated for any given Froude Number (Lenght 
 
 The corresponding velocity is $(round(1.944 * Fn1√(9.81*length_ps); digits=2))kts
 """
+  ╠═╡ =#
 
 # ╔═╡ 860dc015-a6f8-44e8-81d4-3c3391cef7dd
+#=╠═╡
 q, ps, A = solve_sources(panels;Fn=Fn1);
+  ╠═╡ =#
 
 # ╔═╡ 301d6aed-a9f6-4a3c-9a41-0a4f693e1355
+#=╠═╡
 begin
 	md"""
 	#### Free surface elevation of the model at Fn=$(Fn1)
@@ -343,8 +370,11 @@ begin
 	plot? $(@bind plot_contour_1 CheckBox(default=false))
 	"""
 end
+  ╠═╡ =#
 
 # ╔═╡ 9998b3e0-a799-42a5-889a-91908d1268dd
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 if plot_contour_1
     plotly()
@@ -353,28 +383,106 @@ if plot_contour_1
     Plots.plot!(shape, c=:blue,legend=nothing)
 end
 end
+  ╠═╡ =#
 
 # ╔═╡ 744044c4-0ca8-400c-b049-71e16ef052d9
+# ╠═╡ disabled = true
+#=╠═╡
 added_mass(panels; ps)
+  ╠═╡ =#
 
 # ╔═╡ 9fef423f-6f85-48ab-86fa-7687af6ce184
 md"""
-## Validation
+## Verification
 intro
 
-### Kelvin wake angles
-intro
+### Comparisson to wigley hull
+In order to validate the output from the model create using the grasshopper script, a reference that resembles the geometry of the grasshopper model had to be found. This reference was constructed by adapting the wigley hull as defined notebook "wigley.jl" (REF TO NOTEBOOK). 
+
+The first step in the process of constructing a resembling geometry was to double the wigley hull, with an offset with respect to the center line. For this, it was chosen to explictly define the complete hull, instead of mirroring a half hull. While the mirroring would reduce computational time, the process of mirroring a half hull has the potential to create an additional source of human error. Since this geometry will be used as verification of the grasshopper model, minimizing the potential for error has been considered a priority above computational time. 
+
+The code block below shows the definition of two wigley hull's, that have an offset with respect to the center line. Below the code, the panels as created by the code block and the potential flow solution are plotted.
 """
 
+# ╔═╡ 110b514a-6666-48f6-ba52-4b188caf9ca3
+begin
+	B = 0.2
+	offset = 5/2
+	L = 1
+
+	# drawing the double hull in a plot
+	wigley_WL(x, offset, unit) = unit*0.5B*(1-(2x)^2)+(B*offset)/2 
+	wigley_shape_l_1(h,x=-(L/2):h:(L/2)) = Plots.Shape(x,wigley_WL.(x, offset, 1))
+	wigley_shape_r_1(h,x=-(L/2):h:(L/2)) = Plots.Shape(x,wigley_WL.(x, offset, -1))
+	wigley_shape_l_2(h,x=-(L/2):h:(L/2)) = Plots.Shape(x,wigley_WL.(x,-offset, 1))
+	wigley_shape_r_2(h,x=-(L/2):h:(L/2)) = Plots.Shape(x,wigley_WL.(x,-offset, -1))
+
+	function wigley_hull(hx,hz;D=1/8)
+		# parabolic width equation and scaled 3D surface for the PS part of PS hull
+		η_l_1(ξ,ζ) = (1-ξ^2)*(1-ζ^2)+offset                
+	    S_l_1(ξ,ζ) = SA[0.5L*ξ,0.5B*η_l_1(ξ,ζ),-D*ζ]
+
+		# parabolic width equation and scaled 3D surface for the SB part of PS hull
+		η_r_1(ξ,ζ) = -((1-ξ^2)*(1-ζ^2)-offset)                
+	    S_r_1(ξ,ζ) = SA[0.5L*ξ,0.5B*η_r_1(ξ,ζ),-D*ζ]    
+
+		# parabolic width equation and scaled 3D surface for the PS part of SB hull
+		η_l_2(ξ,ζ) = (1-ξ^2)*(1-ζ^2)-offset
+	    S_l_2(ξ,ζ) = SA[0.5L*ξ,0.5B*η_l_2(ξ,ζ),-D*ζ]
+
+		# parabolic width equation and scaled 3D surface for the SB part of SB hull
+		η_r_2(ξ,ζ) = -((1-ξ^2)*(1-ζ^2)+offset)               
+	    S_r_2(ξ,ζ) = SA[0.5L*ξ,0.5B*η_r_2(ξ,ζ),-D*ζ]
+		
+	    dξ = 1/round(0.5L/hx); ξ = 0.5dξ-1:dξ:1 # sampling in ξ
+	    dζ = 1/round(D/hz); ζ = 0.5dζ:dζ:1      # sampling in ζ
+		
+	    # explicit defintion of all hull parts
+		panels_l_1 = param_props.(S_l_1,ξ,ζ',dξ,dζ) |> Table     
+	    panels_r_1 = param_props.(S_r_1,ξ,ζ',-dξ,dζ) |> Table
+		panels_l_2 = param_props.(S_l_2,ξ,ζ',dξ,dζ) |> Table
+		panels_r_2 = param_props.(S_r_2,ξ,ζ',-dξ,dζ) |> Table 
+
+		# return concatinated hull
+		return vcat(panels_l_1, panels_r_1, panels_l_2, panels_r_2)
+	end
+end
+
+# ╔═╡ 3079d163-b5b0-4ad8-aaeb-0c32fe721f21
+begin
+	h = 1/32
+	doublehull = wigley_hull(h,h); length(doublehull) 
+	Plots.scatter3d(
+	eachrow(stack(doublehull.x))...,label=nothing,
+	ylims=(-1,1),zlims=(-0.5,0.5),
+	marker_z=@.(last(doublehull.x)^2<doublehull.dA),
+	c=palette([:grey,:green], 2),
+	title = "Double Wigley hull with waterline panels marked")
+end
+
 # ╔═╡ 1c89e4be-6cb6-4c0b-a3b4-b48e07617470
-# ╠═╡ disabled = true
 #=╠═╡
 begin
-	function wave_height_ana(t, omega=1, zeta_a=1)
-		zeta_ana = (2 * zeta_a * cos(omega * t))
+	Fnq = 0.2 	# Froude number 0.2 taken consistent across all models
+	
+	### CODE BELOW TAKEN DIRECTLY FROM WIGLEY.JL ###
+	∫contour(x,p;Fn) = kelvin(x,p.x .* SA[1,1,0];Fn)*p.n[1]*p.dA
+	function ∫surface(x,p;Fn,χ=true,dz=0)
+		(!χ || p.x[3]^2 > p.dA) && return ∫kelvin(x,p;Fn,dz) # no waterline
+		∫kelvin(x,p;Fn,dz)+∫contour(x,p;Fn)
 	end
-	plot(range(0,25,100),wave_height_ana,xlims=(0, 25), ylims=(-3,3),xlabel="time [s]",ylabel="Wave height [m] - Analytical", label="Analytical Wave Height", legend=true)
-end
+	
+	ps = (ϕ=∫surface,Fn=Fnq)        # NamedTuple of keyword-arguments
+	q = influence(doublehull;ps...)\first.(doublehull.n) # solve for densities
+	### CODE ABOVE TAKEN DIRECTLY FROM WIGLEY.JL ###
+
+	Plots.contourf(-1.5:h:1,-1:h:1,(x,y)->ζ(x,y,q,doublehull;ps...),
+	c=:balance,aspect_ratio=:equal,clims=(-0.3,0.3));Plots.plot!(
+	wigley_shape_l_1(h),c=:black,legend=nothing);Plots.plot!(
+	wigley_shape_r_1(h),c=:black,legend=nothing);Plots.plot!(
+	wigley_shape_l_2(h),c=:black,legend=nothing);Plots.plot!(
+	wigley_shape_r_2(h),c=:black,legend=nothing)
+end;
   ╠═╡ =#
 
 # ╔═╡ 68af513d-c457-49f8-ba7c-d6ca7c142975
@@ -391,10 +499,16 @@ From the plot you can see.....
 md"""### Comparison between demi-hull and full hull"""
 
 # ╔═╡ 56a91a7a-1e7f-400d-b18b-4d35f66238e8
+# ╠═╡ disabled = true
+#=╠═╡
 panels_half, _, length_half, h_half = importMesh(joinpath(data_folder,"grid_convergence/PS_hull_0313_12-12_half_1057p.json"));
+  ╠═╡ =#
 
 # ╔═╡ cb9e519b-d5e3-440f-8d5b-bc337fe1788e
+# ╠═╡ disabled = true
+#=╠═╡
 q_half, ps_half, A_half = solve_sources(panels_half;demi=true, Fn=0.2, verbose=true);
+  ╠═╡ =#
 
 # ╔═╡ dee1baa0-8614-465c-b232-afba4df9fe5f
 # ╠═╡ disabled = true
@@ -403,7 +517,10 @@ q_half, ps_half, A_half = solve_sources(panels_half;demi=true, Fn=0.2, verbose=t
   ╠═╡ =#
 
 # ╔═╡ 8195e9a2-e85f-4e15-aba9-1096add9b77c
+# ╠═╡ disabled = true
+#=╠═╡
 added_mass(panels_half; ps_half)
+  ╠═╡ =#
 
 # ╔═╡ d61b5b53-0ab1-4fee-8ce1-1845c54e918e
 # ╠═╡ disabled = true
@@ -416,11 +533,16 @@ end
   ╠═╡ =#
 
 # ╔═╡ 3a72df8a-79a0-4087-beff-f839a5ddc133
+# ╠═╡ disabled = true
+#=╠═╡
 md"""
 Plot? $(@bind plot_half CheckBox(default=false))
 """
+  ╠═╡ =#
 
 # ╔═╡ 9d9ad896-0388-4802-bb0e-bc7f62db127f
+# ╠═╡ disabled = true
+#=╠═╡
 begin
     if plot_half
 	Plots.contourf(-1.5length_half:h_half:1.5length_half,-length_half:h_half:length_half,(x,y)->2ζ(x,y,q_half,panels_half;ps_half...),
@@ -428,18 +550,25 @@ begin
     end
 end
 
+  ╠═╡ =#
 
 # ╔═╡ 29891ae5-f88d-4618-acb2-ecf70cb4ed21
+# ╠═╡ disabled = true
+#=╠═╡
 plot_half && plot(Plots.heatmap(0.5log.(A .^2),yflip=true,title="log.(|Aˢ|)"),
 	 Plots.heatmap(0.5log.(A_half .^2),yflip=true,title="log.(|A_half|)"),
 	 layout=(1,2),size=(600,300),clims=(-6,2))
+  ╠═╡ =#
 
 # ╔═╡ 42f16fad-8b1f-4292-8834-d25cd1eaa3db
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 	Cwᶠ = steady_force(q, panels;ps)[1]
 	Cwʰ = steady_force(q_half, panels_half; ps_half)[1]
 	println("Cw full hull: $(Cwᶠ). Half hull: $(Cwʰ)")
 end
+  ╠═╡ =#
 
 # ╔═╡ 8a8e28a6-0b5a-49cf-9035-97c9bb59214a
 md"""
@@ -568,16 +697,6 @@ begin
 	nothing
 end
 
-# ╔═╡ c45ce64f-2ae1-4120-adad-24c1f843498c
-begin
-	using DataFrames
-	value = ["Speed range [m/s]", "Froude number"]
-	
-	speed_ranges = [speed_range, froude_range]
-	
-	df_speed = DataFrame(Value = value, Range = speed_ranges)
-end
-
 # ╔═╡ 073d70ef-da1e-47dd-b0e5-a532b936c883
 md"""
 ## The study
@@ -588,12 +707,27 @@ md"""
 Based on the vessel length computed above, the speed range over which each hull geometry is to be evaluated becomes:
 """
 
+# ╔═╡ c45ce64f-2ae1-4120-adad-24c1f843498c
+# ╠═╡ disabled = true
+#=╠═╡
+begin
+	using DataFrames
+	value = ["Speed range [m/s]", "Froude number"]
+	
+	speed_ranges = [speed_range, froude_range]
+	
+	df_speed = DataFrame(Value = value, Range = speed_ranges)
+end
+  ╠═╡ =#
+
 # ╔═╡ 39c8e8f6-6852-4f3e-84b3-72e8c4e3db11
 md"""
 Furthermore, the variance range for all parameters are displayed in the table below. For the all ranges, the middle parameter is equal to the real world value. Note that not for some parameters, the real world value is not known. These values have been visually approximated in Rhino, which is labled in the source column as "approximated".
 """
 
 # ╔═╡ 00bf348b-9e12-4486-a772-3fe1c26234cd
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 	parameters = ["Slot width", "Slot length", "Bow width", "Horizontal bow radius", "Vertical bow radius", "Outer bilge keel", "Inner bilge keel"]
 	sources = ["Real world value", "Real world value", "Real world value", "Approximated", "Approximated", "Approximated", "Approximated"]
@@ -602,6 +736,7 @@ begin
 	
 	df_geometry = DataFrame(Parameter = parameters, Range = ranges, Source = sources)
 end
+  ╠═╡ =#
 
 # ╔═╡ 79d035b0-df28-4e7b-bba2-f484fd24e14c
 md"""
@@ -638,26 +773,13 @@ end;
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
-DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
-LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 NeumannKelvin = "7f078b06-e5c4-4cf8-bb56-b92882a0ad03"
-PlotlyBase = "a03496cd-edff-5a9b-9e67-9cda94a718b5"
-PlotlyKaleido = "f2990250-8cf9-495f-b13a-cce12b45703c"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-DataFrames = "~1.7.0"
-JSON = "~0.21.4"
 NeumannKelvin = "~0.5.1"
-PlotlyBase = "~0.8.20"
-PlotlyKaleido = "~2.2.6"
 Plots = "~1.40.9"
-PlutoUI = "~0.7.23"
-StaticArrays = "~1.9.13"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -666,7 +788,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.3"
 manifest_format = "2.0"
-project_hash = "4103bb7c58447756354e1d4ceb582962036115f5"
+project_hash = "49a4c48d9a580d7807cb911577255fbfc832a436"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -678,12 +800,6 @@ weakdeps = ["ChainRulesCore", "Test"]
     [deps.AbstractFFTs.extensions]
     AbstractFFTsChainRulesCoreExt = "ChainRulesCore"
     AbstractFFTsTestExt = "Test"
-
-[[deps.AbstractPlutoDingetjes]]
-deps = ["Pkg"]
-git-tree-sha1 = "6e1d2a35f2f90a4bc7c2ed98079b2ba09c35b83a"
-uuid = "6e696c72-6542-2067-7265-42206c756150"
-version = "1.3.2"
 
 [[deps.Accessors]]
 deps = ["CompositionsBase", "ConstructionBase", "Dates", "InverseFunctions", "MacroTools"]
@@ -811,19 +927,15 @@ version = "3.29.0"
 
 [[deps.ColorTypes]]
 deps = ["FixedPointNumbers", "Random"]
-git-tree-sha1 = "c7acce7a7e1078a20a285211dd73cd3941a871d6"
+git-tree-sha1 = "b10d0b65641d57b8b4d5e234446582de5047050d"
 uuid = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
-version = "0.12.0"
-weakdeps = ["StyledStrings"]
-
-    [deps.ColorTypes.extensions]
-    StyledStringsExt = "StyledStrings"
+version = "0.11.5"
 
 [[deps.ColorVectorSpace]]
 deps = ["ColorTypes", "FixedPointNumbers", "LinearAlgebra", "Requires", "Statistics", "TensorCore"]
-git-tree-sha1 = "8b3b6f87ce8f65a2b4f857528fd8d70086cd72b1"
+git-tree-sha1 = "a1f44953f2382ebb937d60dafbe2deea4bd23249"
 uuid = "c3611d14-8923-5661-9e6a-0046d554d3a4"
-version = "0.11.0"
+version = "0.10.0"
 weakdeps = ["SpecialFunctions"]
 
     [deps.ColorVectorSpace.extensions]
@@ -896,21 +1008,10 @@ git-tree-sha1 = "439e35b0b36e2e5881738abc8857bd92ad6ff9a8"
 uuid = "d38c429a-6771-53c6-b99e-75d170b6e991"
 version = "0.6.3"
 
-[[deps.Crayons]]
-git-tree-sha1 = "249fe38abf76d48563e2f4556bebd215aa317e15"
-uuid = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
-version = "4.1.1"
-
 [[deps.DataAPI]]
 git-tree-sha1 = "abe83f3a2f1b857aac70ef8b269080af17764bbe"
 uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
 version = "1.16.0"
-
-[[deps.DataFrames]]
-deps = ["Compat", "DataAPI", "DataStructures", "Future", "InlineStrings", "InvertedIndices", "IteratorInterfaceExtensions", "LinearAlgebra", "Markdown", "Missings", "PooledArrays", "PrecompileTools", "PrettyTables", "Printf", "Random", "Reexport", "SentinelArrays", "SortingAlgorithms", "Statistics", "TableTraits", "Tables", "Unicode"]
-git-tree-sha1 = "fb61b4812c49343d7ef0b533ba982c46021938a6"
-uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-version = "1.7.0"
 
 [[deps.DataStructures]]
 deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
@@ -1134,24 +1235,6 @@ git-tree-sha1 = "55c53be97790242c29031e5cd45e8ac296dadda3"
 uuid = "2e76f6c2-a576-52d4-95c1-20adfe4de566"
 version = "8.5.0+0"
 
-[[deps.Hyperscript]]
-deps = ["Test"]
-git-tree-sha1 = "8d511d5b81240fc8e6802386302675bdf47737b9"
-uuid = "47d2ed2b-36de-50cf-bf87-49c2cf4b8b91"
-version = "0.0.4"
-
-[[deps.HypertextLiteral]]
-deps = ["Tricks"]
-git-tree-sha1 = "7134810b1afce04bbc1045ca1985fbe81ce17653"
-uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
-version = "0.9.5"
-
-[[deps.IOCapture]]
-deps = ["Logging", "Random"]
-git-tree-sha1 = "b6d6bfdd7ce25b0f9b2f6b3dd56b2673a66c8770"
-uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
-version = "0.2.5"
-
 [[deps.Indexing]]
 git-tree-sha1 = "ce1566720fd6b19ff3411404d4b977acd4814f9f"
 uuid = "313cdc1a-70c2-5d6a-ae34-0150d3930a38"
@@ -1161,19 +1244,6 @@ version = "1.1.1"
 git-tree-sha1 = "4da0f88e9a39111c2fa3add390ab15f3a44f3ca3"
 uuid = "22cec73e-a1b8-11e9-2c92-598750a2cf9c"
 version = "0.3.1"
-
-[[deps.InlineStrings]]
-git-tree-sha1 = "6a9fde685a7ac1eb3495f8e812c5a7c3711c2d5e"
-uuid = "842dd82b-1e85-43dc-bf29-5d0ee9dffc48"
-version = "1.4.3"
-
-    [deps.InlineStrings.extensions]
-    ArrowTypesExt = "ArrowTypes"
-    ParsersExt = "Parsers"
-
-    [deps.InlineStrings.weakdeps]
-    ArrowTypes = "31f734f8-188a-4ce0-8406-c8a06bd891cd"
-    Parsers = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
 
 [[deps.IntelOpenMP_jll]]
 deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl"]
@@ -1195,11 +1265,6 @@ weakdeps = ["Dates", "Test"]
     [deps.InverseFunctions.extensions]
     InverseFunctionsDatesExt = "Dates"
     InverseFunctionsTestExt = "Test"
-
-[[deps.InvertedIndices]]
-git-tree-sha1 = "6da3c4316095de0f5ee2ebd875df8721e7e0bdbe"
-uuid = "41ab1584-1d38-5bbf-9106-f11c6c58b48f"
-version = "1.3.1"
 
 [[deps.IrrationalConstants]]
 git-tree-sha1 = "e2222959fbc6c19554dc15174c81bf7bf3aa691c"
@@ -1234,12 +1299,6 @@ deps = ["Artifacts", "JLLWrappers", "Libdl"]
 git-tree-sha1 = "eac1206917768cb54957c65a615460d87b455fc1"
 uuid = "aacddb02-875f-59d6-b918-886e6ef4fbf8"
 version = "3.1.1+0"
-
-[[deps.Kaleido_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "43032da5832754f58d14a91ffbe86d5f176acda9"
-uuid = "f7e6163d-2fa5-5f23-b69c-1db539e41963"
-version = "0.2.1+0"
 
 [[deps.LAME_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -1523,12 +1582,6 @@ git-tree-sha1 = "3b31172c032a1def20c98dae3f2cdc9d10e3b561"
 uuid = "36c8627f-9965-5494-a995-c6b170f724f3"
 version = "1.56.1+0"
 
-[[deps.Parameters]]
-deps = ["OrderedCollections", "UnPack"]
-git-tree-sha1 = "34c0e9ad262e5f7fc75b10a9952ca7692cfc5fbe"
-uuid = "d96e819e-fc66-5662-9728-84c9c7592b0a"
-version = "0.12.3"
-
 [[deps.Parsers]]
 deps = ["Dates", "PrecompileTools", "UUIDs"]
 git-tree-sha1 = "8489905bcdbcfac64d1daa51ca07c0d8f0283821"
@@ -1567,30 +1620,6 @@ git-tree-sha1 = "3ca9a356cd2e113c420f2c13bea19f8d3fb1cb18"
 uuid = "995b91a9-d308-5afd-9ec6-746e21dbc043"
 version = "1.4.3"
 
-[[deps.PlotlyBase]]
-deps = ["ColorSchemes", "Colors", "Dates", "DelimitedFiles", "DocStringExtensions", "JSON", "LaTeXStrings", "Logging", "Parameters", "Pkg", "REPL", "Requires", "Statistics", "UUIDs"]
-git-tree-sha1 = "90af5c9238c1b3b25421f1fdfffd1e8fca7a7133"
-uuid = "a03496cd-edff-5a9b-9e67-9cda94a718b5"
-version = "0.8.20"
-
-    [deps.PlotlyBase.extensions]
-    DataFramesExt = "DataFrames"
-    DistributionsExt = "Distributions"
-    IJuliaExt = "IJulia"
-    JSON3Ext = "JSON3"
-
-    [deps.PlotlyBase.weakdeps]
-    DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-    Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
-    IJulia = "7073ff75-c697-5162-941a-fcdaad2a7d2a"
-    JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
-
-[[deps.PlotlyKaleido]]
-deps = ["Artifacts", "Base64", "JSON", "Kaleido_jll"]
-git-tree-sha1 = "ba551e47d7eac212864fdfea3bd07f30202b4a5b"
-uuid = "f2990250-8cf9-495f-b13a-cce12b45703c"
-version = "2.2.6"
-
 [[deps.Plots]]
 deps = ["Base64", "Contour", "Dates", "Downloads", "FFMPEG", "FixedPointNumbers", "GR", "JLFzf", "JSON", "LaTeXStrings", "Latexify", "LinearAlgebra", "Measures", "NaNMath", "Pkg", "PlotThemes", "PlotUtils", "PrecompileTools", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "RelocatableFolders", "Requires", "Scratch", "Showoff", "SparseArrays", "Statistics", "StatsBase", "TOML", "UUIDs", "UnicodeFun", "UnitfulLatexify", "Unzip"]
 git-tree-sha1 = "dae01f8c2e069a683d3a6e17bbae5070ab94786f"
@@ -1611,18 +1640,6 @@ version = "1.40.9"
     ImageInTerminal = "d8c32880-2388-543b-8c61-d9f865259254"
     Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
-[[deps.PlutoUI]]
-deps = ["AbstractPlutoDingetjes", "Base64", "Dates", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
-git-tree-sha1 = "5152abbdab6488d5eec6a01029ca6697dff4ec8f"
-uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-version = "0.7.23"
-
-[[deps.PooledArrays]]
-deps = ["DataAPI", "Future"]
-git-tree-sha1 = "36d8b4b899628fb92c2749eb488d884a926614d3"
-uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
-version = "1.4.3"
-
 [[deps.PrecompileTools]]
 deps = ["Preferences"]
 git-tree-sha1 = "5aa36f7049a63a1528fe8f7c3f2113413ffd4e1f"
@@ -1634,12 +1651,6 @@ deps = ["TOML"]
 git-tree-sha1 = "9306f6085165d270f7e3db02af26a400d580f5c6"
 uuid = "21216c6a-2e73-6563-6e65-726566657250"
 version = "1.4.3"
-
-[[deps.PrettyTables]]
-deps = ["Crayons", "LaTeXStrings", "Markdown", "PrecompileTools", "Printf", "Reexport", "StringManipulation", "Tables"]
-git-tree-sha1 = "1101cd475833706e4d0e7b122218257178f48f34"
-uuid = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
-version = "2.4.0"
 
 [[deps.Printf]]
 deps = ["Unicode"]
@@ -1762,12 +1773,6 @@ git-tree-sha1 = "3bac05bc7e74a75fd9cba4295cde4045d9fe2386"
 uuid = "6c6a2e73-6563-6170-7368-637461726353"
 version = "1.2.1"
 
-[[deps.SentinelArrays]]
-deps = ["Dates", "Random"]
-git-tree-sha1 = "712fb0231ee6f9120e005ccd56297abbc053e7e0"
-uuid = "91c51154-3ec4-41a3-a24f-3f23e20d615c"
-version = "1.4.8"
-
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 version = "1.11.0"
@@ -1870,12 +1875,6 @@ git-tree-sha1 = "29321314c920c26684834965ec2ce0dacc9cf8e5"
 uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 version = "0.34.4"
 
-[[deps.StringManipulation]]
-deps = ["PrecompileTools"]
-git-tree-sha1 = "725421ae8e530ec29bcbdddbe91ff8053421d023"
-uuid = "892a3eda-7b42-436c-8928-eab12a02cf0e"
-version = "0.4.1"
-
 [[deps.StyledStrings]]
 uuid = "f489334b-da3d-4c2e-b8f0-e476e12c162b"
 version = "1.11.0"
@@ -1951,11 +1950,6 @@ version = "0.4.84"
     OnlineStatsBase = "925886fa-5bf2-5e8e-b522-a9147a512338"
     Referenceables = "42d2dcc6-99eb-4e98-b66c-637b7d73030e"
 
-[[deps.Tricks]]
-git-tree-sha1 = "6cae795a5a9313bbb4f60683f7263318fc7d1505"
-uuid = "410a4b4d-49e4-4fbc-ab6d-cb71b17b3775"
-version = "0.1.10"
-
 [[deps.TypedTables]]
 deps = ["Adapt", "Dictionaries", "Indexing", "SplitApplyCombine", "Tables", "Unicode"]
 git-tree-sha1 = "84fd7dadde577e01eb4323b7e7b9cb51c62c60d4"
@@ -1971,11 +1965,6 @@ version = "1.5.1"
 deps = ["Random", "SHA"]
 uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 version = "1.11.0"
-
-[[deps.UnPack]]
-git-tree-sha1 = "387c1f73762231e86e0c9c5443ce3b4a0a9a0c2b"
-uuid = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
-version = "1.0.2"
 
 [[deps.Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
@@ -2314,35 +2303,37 @@ version = "1.4.1+2"
 
 # ╔═╡ Cell order:
 # ╟─fa570bdd-3772-4750-980d-d75cf268ffcf
-# ╟─2adecdf9-45d8-4c18-8227-fb0a554ea3ca
+# ╠═2adecdf9-45d8-4c18-8227-fb0a554ea3ca
 # ╟─5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
 # ╟─c7786892-73cf-4e23-bfe6-339feae6f4de
 # ╟─ef64d57f-30e6-45dd-b598-65728d31b77b
-# ╠═adc7fdd3-b339-4573-9717-34d7d4ac0324
-# ╠═aa0202ef-8dea-4c3f-a017-fe367efca375
-# ╠═62c1471f-5803-4b61-85fd-4a3bafde8210
+# ╟─adc7fdd3-b339-4573-9717-34d7d4ac0324
+# ╟─aa0202ef-8dea-4c3f-a017-fe367efca375
+# ╟─62c1471f-5803-4b61-85fd-4a3bafde8210
 # ╟─f41c5399-987a-4122-b283-76f488eaabb7
 # ╠═e64e3e12-d797-4fd0-b2e6-c371b8aebf82
-# ╠═520977d9-d16c-4dc1-83e2-6d6bd058662c
-# ╠═1d5b75bc-9b23-473d-bc43-5d492c621d5d
+# ╟─520977d9-d16c-4dc1-83e2-6d6bd058662c
+# ╟─1d5b75bc-9b23-473d-bc43-5d492c621d5d
 # ╟─bc054f16-5c7a-4b8d-b9af-abe0e1965573
 # ╟─e513f638-a083-4bfb-aa3e-6450d37001b5
-# ╠═40a64ec4-cdaa-497d-9283-c3c1da062d58
+# ╟─40a64ec4-cdaa-497d-9283-c3c1da062d58
 # ╟─5fa06031-f734-42e7-95bf-fd0daf506687
-# ╠═98e84ada-af82-4715-b894-6a9e1153ebb8
-# ╠═264da090-b49b-4203-903c-a2fe81f165aa
+# ╟─98e84ada-af82-4715-b894-6a9e1153ebb8
+# ╟─264da090-b49b-4203-903c-a2fe81f165aa
 # ╟─7e195849-db71-401b-8c3c-68c712135390
-# ╠═3006e2d4-c8b9-48a3-9857-5ab15b59238e
-# ╟─a0c223be-1c3e-4fc2-aa5b-e6b6e077eb40
-# ╠═b2203672-3079-49ec-a7f4-e09804136b86
+# ╟─3006e2d4-c8b9-48a3-9857-5ab15b59238e
+# ╠═a0c223be-1c3e-4fc2-aa5b-e6b6e077eb40
+# ╟─b2203672-3079-49ec-a7f4-e09804136b86
 # ╟─8546b716-93fc-4372-81be-f72566f8ad9d
-# ╠═277b39c7-d1a6-44dc-ab94-0df434f45ebc
+# ╟─277b39c7-d1a6-44dc-ab94-0df434f45ebc
 # ╟─f34a6fa6-2d59-41ad-93fd-e431c52357c9
-# ╠═860dc015-a6f8-44e8-81d4-3c3391cef7dd
+# ╟─860dc015-a6f8-44e8-81d4-3c3391cef7dd
 # ╟─301d6aed-a9f6-4a3c-9a41-0a4f693e1355
-# ╠═9998b3e0-a799-42a5-889a-91908d1268dd
-# ╠═744044c4-0ca8-400c-b049-71e16ef052d9
+# ╟─9998b3e0-a799-42a5-889a-91908d1268dd
+# ╟─744044c4-0ca8-400c-b049-71e16ef052d9
 # ╟─9fef423f-6f85-48ab-86fa-7687af6ce184
+# ╠═110b514a-6666-48f6-ba52-4b188caf9ca3
+# ╟─3079d163-b5b0-4ad8-aaeb-0c32fe721f21
 # ╠═1c89e4be-6cb6-4c0b-a3b4-b48e07617470
 # ╟─68af513d-c457-49f8-ba7c-d6ca7c142975
 # ╟─96f047dc-eb1c-4520-bad0-b4670fbafe57
