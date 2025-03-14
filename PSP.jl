@@ -248,8 +248,6 @@ The create panels function is used to construct a panel from 4 vertex points. Th
 
 
 # ╔═╡ 7812bbc4-a0a9-42a0-a0ce-9da86ad380b7
-# ╠═╡ disabled = true
-#=╠═╡
 function createPanel(vertices::Array{Array{Float64, 1}, 1},
 					 normals::Array{Array{Float64, 1}, 1}, 
 					 faces::Array{Int64, 1});
@@ -288,7 +286,6 @@ function createPanel(vertices::Array{Array{Float64, 1}, 1},
 end
 
 
-  ╠═╡ =#
 
 # ╔═╡ e717c9c8-dae4-48cf-ad4d-d50d94652a33
 md"""
@@ -297,8 +294,6 @@ This function simply creates a Plots shape based on the parameters of the model 
 """
 
 # ╔═╡ cb4c1429-bf61-4cb0-8c4a-11433073d8a9
-# ╠═╡ disabled = true
-#=╠═╡
 function psShape(ship_info::Dict{String, Any});
 		length = float(ship_info["length"]);
 		bow_length = float(ship_info["bow"]["length"]);
@@ -345,11 +340,8 @@ function psShape(ship_info::Dict{String, Any});
 	
 end
 
-  ╠═╡ =#
 
 # ╔═╡ 202dea43-7c21-4c75-b3ae-6e351a384bb7
-# ╠═╡ disabled = true
-#=╠═╡
 function importMesh(filename::String);
 	import_data:: Dict{String, Any} = JSON.parsefile(filename);
 	toArray(str:: String) = parse.(Float64, split(strip(str, ['{', '}']), ","));
@@ -378,10 +370,6 @@ function importMesh(filename::String);
 	return panels, shape, total_length, h_mean;
 
 end
-  ╠═╡ =#
-
-# ╔═╡ 1e1562d3-e70b-4db8-84df-1587b64278cb
-
 
 # ╔═╡ e4538923-8dde-46b3-8931-9e8c63acffff
 md"""
@@ -455,7 +443,7 @@ pʰ, sʰ, lʰ, hʰₘ = importMesh(joinpath(@__DIR__, "data", "small_ps", "PS_hu
 
 # ╔═╡ a0c223be-1c3e-4fc2-aa5b-e6b6e077eb40
 md"""
-Plot panels scatterplot? For performance this is optional.
+Plot panels scatterplot? For performance this is optional, and only 1 every 5 panels is plotted.
 
 $(@bind plot_panels CheckBox(default=false))
 """
@@ -479,90 +467,61 @@ begin
 end
 
 # ╔═╡ 8546b716-93fc-4372-81be-f72566f8ad9d
-md"""Using the code from class the source strengths can be solved"""
+md"""
+### Solving Sources
+Using the ```solve_sources``` function the flow around the two hulls can be modelled. The length scaled froude number $$Fn_l$$ is used and set at 0.2.
+"""
 
 # ╔═╡ 277b39c7-d1a6-44dc-ab94-0df434f45ebc
+qᵈ, psᵈ, Aᵈ = solve_sources(pᵈ; Fn=0.2)
 
-
-# ╔═╡ f34a6fa6-2d59-41ad-93fd-e431c52357c9
-# ╠═╡ disabled = true
-#=╠═╡
-md"""
-Then the source strengths can be calculated for any given Froude Number (Lenght based)
-
-**``Fn_l`` =  $(@bind Fn1 confirm(Slider(0.01:0.01:0.4, default=0.2, show_value=true)))**
-
-The corresponding velocity is $(round(1.944 * Fn1√(9.81*length_ps); digits=2))kts
-"""
-  ╠═╡ =#
-
-# ╔═╡ 860dc015-a6f8-44e8-81d4-3c3391cef7dd
-# ╠═╡ disabled = true
-#=╠═╡
-q, ps, A = solve_sources(panels;Fn=Fn1);
-  ╠═╡ =#
-
-# ╔═╡ 301d6aed-a9f6-4a3c-9a41-0a4f693e1355
-# ╠═╡ disabled = true
-#=╠═╡
-begin
-	md"""
-	#### Free surface elevation of the model at Fn=$(Fn1)
-
-	plot? $(@bind plot_contour_1 CheckBox(default=false))
-	"""
-end
-  ╠═╡ =#
+# ╔═╡ e0563b74-fc82-417c-84e9-dac981767d12
+qʰ, psʰ, Aʰ = solve_sources(pʰ; demi=true, Fn=0.2);
 
 # ╔═╡ 9998b3e0-a799-42a5-889a-91908d1268dd
-# ╠═╡ disabled = true
-#=╠═╡
 begin
-if plot_contour_1
-    plotly()
-    Plots.contourf(-2:h_mean:2,-2:h_mean:2, (x,y)->2ζ(x,y,q,panels;ps...),
-        c=:balance, aspect_ratio=:equal);
-    Plots.plot!(shape, c=:blue,legend=nothing)
-end
-end
-  ╠═╡ =#
+plotly()
+plot(
+Plots.contourf(-2:0.1:2,-2:0.1:2, (x,y)->2ζ(x,y,qᵈ, pᵈ ;psᵈ...),
+	c=:balance, aspect_ratio=:equal),
+Plots.contourf(-2:0.1:2,-2:0.1:2, (x,y)->2ζ(x,y,qʰ,pʰ ;psʰ...),
+	c=:balance, aspect_ratio=:equal),
 
-# ╔═╡ 744044c4-0ca8-400c-b049-71e16ef052d9
-# ╠═╡ disabled = true
-#=╠═╡
-added_mass(panels; ps)
-  ╠═╡ =#
+layout=(1, 2), size=(600,300))
+end
 
-# ╠═╡ disabled = true
-#=╠═╡
+# ╔═╡ 859fdcec-a811-44c7-84cc-1a6166332cf1
+md"""
+### Comparing the half and full hull
+
+The propsed method succeeds at creating very similar free surface elevation patterns in the wake of the model. There are however significant differences in the added mass of the two models and the wave making resistance.
+"""
+
+# ╔═╡ e2642f16-d6e9-4d5f-8873-887d733a4013
+added_mass(pᵈ; psᵈ)
+
+# ╔═╡ 05347ca0-89b9-4f40-8c97-091b07c0cddf
+added_mass(pʰ; psʰ)
+
+# ╔═╡ 229c3961-a2b8-43ea-ab5a-2574f9c1a809
 begin
-	Fnq = 0.2 	# Froude number 0.2 taken consistent across all models
-	### CODE BELOW TAKEN DIRECTLY FROM WIGLEY.JL ###
-	function NeumannKelvin.kelvin(ξ,α;Fn,max_z=-1/50)
-		ξ[3]> 0 && throw(DomainError(ξ[3],"Sources must be below z=0"))
-		x,y,z = (ξ-α)/Fn^2
-		z = min(z,max_z/Fn^2) # limit z!! 💔
-		(nearfield(x,y,z)+wavelike(x,abs(y),z))/Fn^2
-	end
-	
-	∫contour(x,p;Fn) = kelvin(x,p.x .* SA[1,1,0];Fn)*p.n[1]*p.dA
-	function ∫surface(x,p;Fn,χ=true,dz=0)
-		(!χ || p.x[3]^2 > p.dA) && return ∫kelvin(x,p;Fn,dz) # no waterline
-		∫kelvin(x,p;Fn,dz)+∫contour(x,p;Fn)
-	end
-	
-	ps = (ϕ=∫surface,Fn=Fnq)        # NamedTuple of keyword-arguments
-	q = influence(doublehull;ps...)\first.(doublehull.n); # solve for densities
-	### CODE ABOVE TAKEN DIRECTLY FROM WIGLEY.JL ###
+	Cwᵈ = steady_force(qᵈ, pᵈ; psᵈ)[1]
+	Cwʰ = steady_force(qʰ, pʰ; psʰ)[1]
+	println("Cw full hull: $(Cwᵈ). Half hull: $(Cwʰ)")
+	println("Differnece: $(Cwᵈ - Cwʰ)")
 end
-  ╠═╡ =#
+
+# ╔═╡ f9c1d5fb-bf0c-4062-ba46-f6855a6f1961
+md"""
+Both the added mass and the wave making resistance significantly differ between the full and the half hull. The cause of this difference is as of the time of writing still unknown. As such the answer to the sub question "Can a demi-hull be used to improve processing?" is currently that it not possible, as the full and demi-hull significantly differ.
+"""
 
 # ╔═╡ 9fef423f-6f85-48ab-86fa-7687af6ce184
 md"""
-## Verification
-intro
+## Verification 
+This section aims to verify the model and the approach used. First a comparison will be made with a similar shaped hull using analytical surfaces and the ```param_props``` function from NeumannKelvin. Then a grid convergence study will be performed.  
 
-### Comparisson to wigley hull
+### Comparison to wigley hull
 In order to validate the output from the model create using the grasshopper script, a reference that resembles the geometry of the grasshopper model had to be found. This reference was constructed by adapting the wigley hull as defined notebook "wigley.jl" (REF TO NOTEBOOK). 
 
 #### Double wigley hull ####
@@ -572,6 +531,8 @@ The code block below shows the definition of two wigley hull's, that have an off
 """
 
 # ╔═╡ 110b514a-6666-48f6-ba52-4b188caf9ca3
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 	B = 0.2
 	offset = 5/2
@@ -614,8 +575,11 @@ begin
 		return vcat(panels_l_1, panels_r_1, panels_l_2, panels_r_2)
 	end
 end
+  ╠═╡ =#
 
 # ╔═╡ 3079d163-b5b0-4ad8-aaeb-0c32fe721f21
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 	h = 1/32
 	doublehull = wigley_double_hull(h,h);
@@ -627,8 +591,11 @@ begin
 	c=palette([:grey,:green], 2),
 	title = "Double Wigley hull with waterline panels marked")
 end
+  ╠═╡ =#
 
 # ╔═╡ 9a2dc360-058b-4ba9-a477-bad65e2d2dae
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 	Fnq = 0.2 	# Froude number 0.2 taken consistent across all models
 	
@@ -641,8 +608,11 @@ begin
 	q_1 = influence(doublehull;ps_1...)\first.(doublehull.n); # solve for densities
 	nothing
 end
+  ╠═╡ =#
 
 # ╔═╡ 1c89e4be-6cb6-4c0b-a3b4-b48e07617470
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 	plotly()
 	Plots.contourf(-1.5:h:1,-1:h:1,(x,y)->ζ(x,y,q_1,doublehull;ps_1...),
@@ -652,8 +622,11 @@ begin
 		wigley_shape_l_2(h),c=:black,legend=nothing);Plots.plot!(
 		wigley_shape_r_2(h),c=:black,legend=nothing)
 end
+  ╠═╡ =#
 
 # ╔═╡ e924cf54-c392-4728-bc0f-89b3722f9b5a
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 	reflect_jul(x::SVector;flip=SA[1,-1,1]) = x.*flip
 	reflect_jul(p::NamedTuple;flip=SA[1,-1,1]) = (x=reflect(p.x;flip), 
@@ -682,8 +655,11 @@ begin
 	
 	nothing
 end
+  ╠═╡ =#
 
 # ╔═╡ 461ee2cd-e445-4503-9cc2-0fa43d874464
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 	plotly()
 	Plots.contourf(-1.5:h:1,-0.8:h:0.8,(x,y)->ζ(x,y,q_2,demihull;ps_2...),
@@ -691,6 +667,7 @@ begin
 		wigley_shape_l(h),c=:black,legend=nothing);Plots.plot!(
 		wigley_shape_r(h),c=:black,legend=nothing, title="Wave height [m] at Froude number = $Fnq")
 end
+  ╠═╡ =#
 
 # ╔═╡ 68af513d-c457-49f8-ba7c-d6ca7c142975
 md"""
@@ -702,6 +679,8 @@ The hull as defined above is then used to define a hull shape that resembles the
 """
 
 # ╔═╡ f16e3fb3-7316-4a6d-a35d-7751fed391a7
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 	slot_len = 0.3 	# Note slot length should be strictly larger then vessel len
 
@@ -764,8 +743,11 @@ begin
 		return vcat(panels_l_1, panels_r_1, panels_l_2, panels_r_2, panels_backplate, panels_bottomplate, front_plate)
 	end
 end
+  ╠═╡ =#
 
 # ╔═╡ 08674063-c98a-403e-bf93-354da6e26a34
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 	plotly()
 	hull_slot = wigley_hull_slot(h,h);
@@ -776,8 +758,11 @@ begin
 	c=palette([:grey,:green], 2),
 	title = "Slotted hull with waterline panels marked")
 end
+  ╠═╡ =#
 
 # ╔═╡ 2652de72-75c0-4737-abea-e83c18ef73a8
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 	ps_3 = (ϕ=∫surface_jul,Fn=Fnq)        # NamedTuple of keyword-arguments
 	q_3 = influence(hull_slot;ps_3...)\first.(hull_slot.n) # solve for densities
@@ -785,6 +770,7 @@ begin
 	Plots.contourf(-1.5:h:1,-0.8:h:0.8,(x,y)->ζ(x,y,q_3,hull_slot;ps_3...),
 		c=:balance,aspect_ratio=:equal,clims=(-3,3));Plots.plot!(wigley_shape_l_1(h),c=:black,legend=nothing);Plots.plot!(	wigley_shape_r_1(h),c=:black,legend=nothing);Plots.plot!(	wigley_shape_l_2(h),c=:black,legend=nothing);Plots.plot!(	wigley_shape_r_2(h),c=:black,legend=nothing);Plots.plot!(Plots.Shape(x_coords, y_coords), aspect_ratio=:equal, lw=2, color=:black,title = "Wave height [m] at Froude number = $Fnq")
 end
+  ╠═╡ =#
 
 # ╔═╡ 5e4d5334-46b2-4935-8f55-27b06a6d1cc5
 md"""
@@ -797,91 +783,25 @@ The potential flow solver does not take viscous damping into account. Since the 
 It could be that there is an error in the geometry definition, leading to an incorrect solution. This can be checked by comparing the solution of the slotted wigley hull with the solution for the NURBS output.
 """
 
-# ╔═╡ 96f047dc-eb1c-4520-bad0-b4670fbafe57
-md"""### Comparison between demi-hull and full hull"""
-
-# ╔═╡ 56a91a7a-1e7f-400d-b18b-4d35f66238e8
-# ╠═╡ disabled = true
-#=╠═╡
-panels_half, _, length_half, h_half = importMesh(joinpath(data_folder,"grid_convergence/PS_hull_0313_12-12_half_1057p.json"));
-  ╠═╡ =#
-
-# ╔═╡ cb9e519b-d5e3-440f-8d5b-bc337fe1788e
-# ╠═╡ disabled = true
-#=╠═╡
-q_half, ps_half, A_half = solve_sources(panels_half;demi=true, Fn=0.2, verbose=true);
-  ╠═╡ =#
-
-# ╔═╡ dee1baa0-8614-465c-b232-afba4df9fe5f
-# ╠═╡ disabled = true
-#=╠═╡
-# Plots.plot(Plots.heatmap(1 ./ A), yflip=true, colorbar_title="1/A")
-  ╠═╡ =#
-
-# ╔═╡ 8195e9a2-e85f-4e15-aba9-1096add9b77c
-# ╠═╡ disabled = true
-#=╠═╡
-added_mass(panels_half; ps_half)
-  ╠═╡ =#
-
-# ╔═╡ d61b5b53-0ab1-4fee-8ce1-1845c54e918e
-# ╠═╡ disabled = true
-#=╠═╡
-begin
-panels_full, shape_full = importMesh(joinpath(data_folder,"PS_hull_0310_14-29_double.json"))
-q_full, s = solve_sources(panels_full)
-added_mass_full = added_mass(panels_full; ps_full)
-end
-  ╠═╡ =#
-
-# ╔═╡ 3a72df8a-79a0-4087-beff-f839a5ddc133
-# ╠═╡ disabled = true
-#=╠═╡
-md"""
-Plot? $(@bind plot_half CheckBox(default=false))
-"""
-  ╠═╡ =#
-
-# ╔═╡ 9d9ad896-0388-4802-bb0e-bc7f62db127f
-# ╠═╡ disabled = true
-#=╠═╡
-begin
-    if plot_half
-	Plots.contourf(-1.5length_half:h_half:1.5length_half,-length_half:h_half:length_half,(x,y)->2ζ(x,y,q_half,panels_half;ps_half...),
-	c=:balance,aspect_ratio=:equal); Plots.plot!(shape, c=:blue,legend=nothing)
-    end
-end
-
-  ╠═╡ =#
-
-# ╔═╡ 29891ae5-f88d-4618-acb2-ecf70cb4ed21
-# ╠═╡ disabled = true
-#=╠═╡
-plot_half && plot(Plots.heatmap(0.5log.(A .^2),yflip=true,title="log.(|Aˢ|)"),
-	 Plots.heatmap(0.5log.(A_half .^2),yflip=true,title="log.(|A_half|)"),
-	 layout=(1,2),size=(600,300),clims=(-6,2))
-  ╠═╡ =#
-
-# ╔═╡ 42f16fad-8b1f-4292-8834-d25cd1eaa3db
-# ╠═╡ disabled = true
-#=╠═╡
-begin
-	Cwᶠ = steady_force(q, panels;ps)[1]
-	Cwʰ = steady_force(q_half, panels_half; ps_half)[1]
-	println("Cw full hull: $(Cwᶠ). Half hull: $(Cwʰ)")
-end
-  ╠═╡ =#
-
 # ╔═╡ 8a8e28a6-0b5a-49cf-9035-97c9bb59214a
 md"""
 ### Grid convergence
+
+A grid convergence study has been performed to check whether the deviating added mass and wavemaking resistance between the full and demi-hull is due to truncation error resulting in the panel size. 
+
+This code has been disabled, as when it was run during the course of the study, it took over an hour to run to completion. To save the time during review, this is the resultant plot:
+![](https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/1065fb1596227773dda98867b6493aa483355654/Images/grid_convergence.svg)
+
+As can be seen in the plot, the wave making resistance does not converge, in neither the full or the half model. This indicates that there is some issue present in the proposed method. Furthermore, there is a significant difference in the full and half model resistances. 
+
+The cause of the error and lack of convergence is unknown at the time of writing. 
 """
 
 # ╔═╡ beb1d70b-d5eb-4f0e-9c40-3c9abbcf63b6
 # ╠═╡ disabled = true
 #=╠═╡
 begin
-data_dir = joinpath(@__DIR__, "..", "src", "data", "grid_convergence_bigger");
+data_dir = joinpath(@__DIR__, "data", "grid_convergence");
 files = readdir(data_dir);
 resistances_full = Dict(0=>(0.0, 0.0))
 resistances_half = Dict(0=>(0.0, 0.0))
@@ -903,6 +823,7 @@ end
   ╠═╡ =#
 
 # ╔═╡ b40cf08b-81ef-4055-9cdc-e7ef647a4830
+# ╠═╡ disabled = true
 #=╠═╡
 begin
     # Sort the data by number of panels
@@ -958,28 +879,6 @@ begin
 end
   ╠═╡ =#
 
-# ╔═╡ 2ccb150c-a71f-42eb-b228-a3f301c0fa93
-# ╠═╡ disabled = true
-#=╠═╡
-begin
-data_dir_bigger = joinpath(@__DIR__, "..", "src", "data", "grid_convergence_bigger");
-full_path = joinpath(data_dir_bigger, "PS_hull_0313_17-14_double_6894p.json")
-half_path = joinpath(data_dir_bigger, "PS_hull_0313_17-14_half_6193p.json")
-	
-panels_full_big, _, _, _ = importMesh(full_path)
-panels_half_big, _, _, _ = importMesh(half_path)
-	
-q_full_big, ps_full_big, _ = solve_sources(panels_full_big; demi=false, verbose=false);
-q_half_big, ps_half_big, _ = solve_sources(panels_half_big; demi=true, verbose=false);
-	
-println(added_mass(panels_full_big; ps_full_big))
-println(added_mass(panels_half_big; ps_half_big))
-end
-  ╠═╡ =#
-
-# ╔═╡ e315acb0-f0a0-4a2d-adc3-c510e0f46997
-
-
 # ╔═╡ b00ddd51-7a31-4809-9830-05e76e2ff0f3
 begin
 	par_range(ref) = vcat([ref * (1 - p) for p in 0.1:0.1:0.5][end:-1:1], ref, [ref * (1 + p) for p in 0.1:0.1:0.5])
@@ -1008,19 +907,6 @@ md"""
  2. **Computing the speed range and the parameter variance range for all variables**
 Based on the vessel length computed above, the speed range over which each hull geometry is to be evaluated becomes:
 """
-
-# ╔═╡ c45ce64f-2ae1-4120-adad-24c1f843498c
-# ╠═╡ disabled = true
-#=╠═╡
-begin
-	using DataFrames
-	value = ["Speed range [m/s]", "Froude number"]
-	
-	speed_ranges = [speed_range, froude_range]
-	
-	df_speed = DataFrame(Value = value, Range = speed_ranges)
-end
-  ╠═╡ =#
 
 # ╔═╡ 39c8e8f6-6852-4f3e-84b3-72e8c4e3db11
 md"""
@@ -1072,10 +958,8 @@ md"""
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
-DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 NeumannKelvin = "7f078b06-e5c4-4cf8-bb56-b92882a0ad03"
 PlotlyBase = "a03496cd-edff-5a9b-9e67-9cda94a718b5"
 PlotlyKaleido = "f2990250-8cf9-495f-b13a-cce12b45703c"
@@ -1084,7 +968,6 @@ PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-DataFrames = "~1.7.0"
 JSON = "~0.21.4"
 NeumannKelvin = "~0.5.1"
 PlotlyBase = "~0.8.20"
@@ -1100,7 +983,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.3"
 manifest_format = "2.0"
-project_hash = "4103bb7c58447756354e1d4ceb582962036115f5"
+project_hash = "67698398d18742366ad0ab53c1e6fa1475bdeb2f"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -1330,21 +1213,10 @@ git-tree-sha1 = "439e35b0b36e2e5881738abc8857bd92ad6ff9a8"
 uuid = "d38c429a-6771-53c6-b99e-75d170b6e991"
 version = "0.6.3"
 
-[[deps.Crayons]]
-git-tree-sha1 = "249fe38abf76d48563e2f4556bebd215aa317e15"
-uuid = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
-version = "4.1.1"
-
 [[deps.DataAPI]]
 git-tree-sha1 = "abe83f3a2f1b857aac70ef8b269080af17764bbe"
 uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
 version = "1.16.0"
-
-[[deps.DataFrames]]
-deps = ["Compat", "DataAPI", "DataStructures", "Future", "InlineStrings", "InvertedIndices", "IteratorInterfaceExtensions", "LinearAlgebra", "Markdown", "Missings", "PooledArrays", "PrecompileTools", "PrettyTables", "Printf", "Random", "Reexport", "SentinelArrays", "SortingAlgorithms", "Statistics", "TableTraits", "Tables", "Unicode"]
-git-tree-sha1 = "fb61b4812c49343d7ef0b533ba982c46021938a6"
-uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-version = "1.7.0"
 
 [[deps.DataStructures]]
 deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
@@ -1596,19 +1468,6 @@ git-tree-sha1 = "4da0f88e9a39111c2fa3add390ab15f3a44f3ca3"
 uuid = "22cec73e-a1b8-11e9-2c92-598750a2cf9c"
 version = "0.3.1"
 
-[[deps.InlineStrings]]
-git-tree-sha1 = "6a9fde685a7ac1eb3495f8e812c5a7c3711c2d5e"
-uuid = "842dd82b-1e85-43dc-bf29-5d0ee9dffc48"
-version = "1.4.3"
-
-    [deps.InlineStrings.extensions]
-    ArrowTypesExt = "ArrowTypes"
-    ParsersExt = "Parsers"
-
-    [deps.InlineStrings.weakdeps]
-    ArrowTypes = "31f734f8-188a-4ce0-8406-c8a06bd891cd"
-    Parsers = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-
 [[deps.IntelOpenMP_jll]]
 deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl"]
 git-tree-sha1 = "0f14a5456bdc6b9731a5682f439a672750a09e48"
@@ -1629,11 +1488,6 @@ weakdeps = ["Dates", "Test"]
     [deps.InverseFunctions.extensions]
     InverseFunctionsDatesExt = "Dates"
     InverseFunctionsTestExt = "Test"
-
-[[deps.InvertedIndices]]
-git-tree-sha1 = "6da3c4316095de0f5ee2ebd875df8721e7e0bdbe"
-uuid = "41ab1584-1d38-5bbf-9106-f11c6c58b48f"
-version = "1.3.1"
 
 [[deps.IrrationalConstants]]
 git-tree-sha1 = "e2222959fbc6c19554dc15174c81bf7bf3aa691c"
@@ -2051,12 +1905,6 @@ git-tree-sha1 = "5152abbdab6488d5eec6a01029ca6697dff4ec8f"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 version = "0.7.23"
 
-[[deps.PooledArrays]]
-deps = ["DataAPI", "Future"]
-git-tree-sha1 = "36d8b4b899628fb92c2749eb488d884a926614d3"
-uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
-version = "1.4.3"
-
 [[deps.PrecompileTools]]
 deps = ["Preferences"]
 git-tree-sha1 = "5aa36f7049a63a1528fe8f7c3f2113413ffd4e1f"
@@ -2068,12 +1916,6 @@ deps = ["TOML"]
 git-tree-sha1 = "9306f6085165d270f7e3db02af26a400d580f5c6"
 uuid = "21216c6a-2e73-6563-6e65-726566657250"
 version = "1.4.3"
-
-[[deps.PrettyTables]]
-deps = ["Crayons", "LaTeXStrings", "Markdown", "PrecompileTools", "Printf", "Reexport", "StringManipulation", "Tables"]
-git-tree-sha1 = "1101cd475833706e4d0e7b122218257178f48f34"
-uuid = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
-version = "2.4.0"
 
 [[deps.Printf]]
 deps = ["Unicode"]
@@ -2196,12 +2038,6 @@ git-tree-sha1 = "3bac05bc7e74a75fd9cba4295cde4045d9fe2386"
 uuid = "6c6a2e73-6563-6170-7368-637461726353"
 version = "1.2.1"
 
-[[deps.SentinelArrays]]
-deps = ["Dates", "Random"]
-git-tree-sha1 = "712fb0231ee6f9120e005ccd56297abbc053e7e0"
-uuid = "91c51154-3ec4-41a3-a24f-3f23e20d615c"
-version = "1.4.8"
-
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 version = "1.11.0"
@@ -2303,12 +2139,6 @@ deps = ["AliasTables", "DataAPI", "DataStructures", "LinearAlgebra", "LogExpFunc
 git-tree-sha1 = "29321314c920c26684834965ec2ce0dacc9cf8e5"
 uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 version = "0.34.4"
-
-[[deps.StringManipulation]]
-deps = ["PrecompileTools"]
-git-tree-sha1 = "725421ae8e530ec29bcbdddbe91ff8053421d023"
-uuid = "892a3eda-7b42-436c-8928-eab12a02cf0e"
-version = "0.4.1"
 
 [[deps.StyledStrings]]
 uuid = "f489334b-da3d-4c2e-b8f0-e476e12c162b"
@@ -2762,7 +2592,6 @@ version = "1.4.1+2"
 # ╠═7812bbc4-a0a9-42a0-a0ce-9da86ad380b7
 # ╟─e717c9c8-dae4-48cf-ad4d-d50d94652a33
 # ╠═cb4c1429-bf61-4cb0-8c4a-11433073d8a9
-# ╠═1e1562d3-e70b-4db8-84df-1587b64278cb
 # ╟─e4538923-8dde-46b3-8931-9e8c63acffff
 # ╠═480da64b-20da-4baa-b40a-4442a689f22a
 # ╟─cc268f85-1c3d-4977-9c86-0d7de56f6060
@@ -2773,14 +2602,16 @@ version = "1.4.1+2"
 # ╠═3006e2d4-c8b9-48a3-9857-5ab15b59238e
 # ╠═580e10df-bdea-4ad7-aa99-facacc160e90
 # ╟─a0c223be-1c3e-4fc2-aa5b-e6b6e077eb40
-# ╠═b2203672-3079-49ec-a7f4-e09804136b86
+# ╟─b2203672-3079-49ec-a7f4-e09804136b86
 # ╟─8546b716-93fc-4372-81be-f72566f8ad9d
 # ╠═277b39c7-d1a6-44dc-ab94-0df434f45ebc
-# ╠═f34a6fa6-2d59-41ad-93fd-e431c52357c9
-# ╠═860dc015-a6f8-44e8-81d4-3c3391cef7dd
-# ╠═301d6aed-a9f6-4a3c-9a41-0a4f693e1355
-# ╠═9998b3e0-a799-42a5-889a-91908d1268dd
-# ╠═744044c4-0ca8-400c-b049-71e16ef052d9
+# ╠═e0563b74-fc82-417c-84e9-dac981767d12
+# ╟─9998b3e0-a799-42a5-889a-91908d1268dd
+# ╟─859fdcec-a811-44c7-84cc-1a6166332cf1
+# ╠═e2642f16-d6e9-4d5f-8873-887d733a4013
+# ╠═05347ca0-89b9-4f40-8c97-091b07c0cddf
+# ╠═229c3961-a2b8-43ea-ab5a-2574f9c1a809
+# ╟─f9c1d5fb-bf0c-4062-ba46-f6855a6f1961
 # ╠═9fef423f-6f85-48ab-86fa-7687af6ce184
 # ╠═110b514a-6666-48f6-ba52-4b188caf9ca3
 # ╠═3079d163-b5b0-4ad8-aaeb-0c32fe721f21
@@ -2793,24 +2624,11 @@ version = "1.4.1+2"
 # ╠═08674063-c98a-403e-bf93-354da6e26a34
 # ╠═2652de72-75c0-4737-abea-e83c18ef73a8
 # ╠═5e4d5334-46b2-4935-8f55-27b06a6d1cc5
-# ╟─96f047dc-eb1c-4520-bad0-b4670fbafe57
-# ╠═56a91a7a-1e7f-400d-b18b-4d35f66238e8
-# ╠═cb9e519b-d5e3-440f-8d5b-bc337fe1788e
-# ╠═dee1baa0-8614-465c-b232-afba4df9fe5f
-# ╠═8195e9a2-e85f-4e15-aba9-1096add9b77c
-# ╠═d61b5b53-0ab1-4fee-8ce1-1845c54e918e
-# ╠═3a72df8a-79a0-4087-beff-f839a5ddc133
-# ╠═9d9ad896-0388-4802-bb0e-bc7f62db127f
-# ╠═29891ae5-f88d-4618-acb2-ecf70cb4ed21
-# ╠═42f16fad-8b1f-4292-8834-d25cd1eaa3db
 # ╟─8a8e28a6-0b5a-49cf-9035-97c9bb59214a
 # ╠═beb1d70b-d5eb-4f0e-9c40-3c9abbcf63b6
 # ╠═b40cf08b-81ef-4055-9cdc-e7ef647a4830
-# ╠═2ccb150c-a71f-42eb-b228-a3f301c0fa93
-# ╠═e315acb0-f0a0-4a2d-adc3-c510e0f46997
 # ╟─b00ddd51-7a31-4809-9830-05e76e2ff0f3
 # ╟─073d70ef-da1e-47dd-b0e5-a532b936c883
-# ╠═c45ce64f-2ae1-4120-adad-24c1f843498c
 # ╟─39c8e8f6-6852-4f3e-84b3-72e8c4e3db11
 # ╟─00bf348b-9e12-4486-a772-3fe1c26234cd
 # ╟─79d035b0-df28-4e7b-bba2-f484fd24e14c
