@@ -4,9 +4,6 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ 2bc4a9ed-2e7a-4eb9-8e1d-37939b665753
-using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, Plots, PlotlyBase,PlotlyKaleido, PlutoUI
-
 # ╔═╡ 480da64b-20da-4baa-b40a-4442a689f22a
 begin 
 	using NeumannKelvin:kelvin,wavelike,nearfield
@@ -58,12 +55,6 @@ The following sub-questions were investigated:
 The final goal of the study is to develop a method to improve the efficiency of the most time consuming part of potential flow simulation - the creation of the model [1]
 
 """
-
-# ╔═╡ 2adecdf9-45d8-4c18-8227-fb0a554ea3ca
-# ╠═╡ disabled = true
-#=╠═╡
-using NeumannKelvin, Markdown, Plots
-  ╠═╡ =#
 
 # ╔═╡ 5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
 md"""
@@ -498,30 +489,6 @@ end
 added_mass(panels; ps)
   ╠═╡ =#
 
-# ╠═╡ disabled = true
-#=╠═╡
-begin
-	Fnq = 0.2 	# Froude number 0.2 taken consistent across all models
-	### CODE BELOW TAKEN DIRECTLY FROM WIGLEY.JL ###
-	function NeumannKelvin.kelvin(ξ,α;Fn,max_z=-1/50)
-		ξ[3]> 0 && throw(DomainError(ξ[3],"Sources must be below z=0"))
-		x,y,z = (ξ-α)/Fn^2
-		z = min(z,max_z/Fn^2) # limit z!! 💔
-		(nearfield(x,y,z)+wavelike(x,abs(y),z))/Fn^2
-	end
-	
-	∫contour(x,p;Fn) = kelvin(x,p.x .* SA[1,1,0];Fn)*p.n[1]*p.dA
-	function ∫surface(x,p;Fn,χ=true,dz=0)
-		(!χ || p.x[3]^2 > p.dA) && return ∫kelvin(x,p;Fn,dz) # no waterline
-		∫kelvin(x,p;Fn,dz)+∫contour(x,p;Fn)
-	end
-	
-	ps = (ϕ=∫surface,Fn=Fnq)        # NamedTuple of keyword-arguments
-	q = influence(doublehull;ps...)\first.(doublehull.n); # solve for densities
-	### CODE ABOVE TAKEN DIRECTLY FROM WIGLEY.JL ###
-end
-  ╠═╡ =#
-
 # ╔═╡ 9fef423f-6f85-48ab-86fa-7687af6ce184
 md"""
 ## Verification
@@ -539,7 +506,7 @@ The code block below shows the definition of two wigley hull's, that have an off
 # ╔═╡ 110b514a-6666-48f6-ba52-4b188caf9ca3
 begin
 	B = 0.2
-	offset = 5/2
+	offset = 4
 	L = 1
 
 	# drawing the double hull in a plot
@@ -610,7 +577,7 @@ end
 # ╔═╡ 1c89e4be-6cb6-4c0b-a3b4-b48e07617470
 begin
 	plotly()
-	Plots.contourf(-1.5:h:1,-1:h:1,(x,y)->ζ(x,y,q_1,doublehull;ps_1...),
+	Plots.contourf(-2:h:1,-1.2:h:1.2,(x,y)->ζ(x,y,q_1,doublehull;ps_1...),
 		c=:balance,aspect_ratio=:equal,clims=(-0.3,0.3));Plots.plot!(
 		wigley_shape_l_1(h),c=:black,legend=nothing);Plots.plot!(
 		wigley_shape_r_1(h),c=:black,legend=nothing);Plots.plot!(
@@ -747,7 +714,7 @@ begin
 	ps_3 = (ϕ=∫surface_jul,Fn=Fnq)        # NamedTuple of keyword-arguments
 	q_3 = influence(hull_slot;ps_3...)\first.(hull_slot.n) # solve for densities
 	plotly()
-	Plots.contourf(-1.5:h:1,-0.8:h:0.8,(x,y)->ζ(x,y,q_3,hull_slot;ps_3...),
+	Plots.contourf(-2:h:1,-1.2:h:1.2,(x,y)->ζ(x,y,q_3,hull_slot;ps_3...),
 		c=:balance,aspect_ratio=:equal,clims=(-3,3));Plots.plot!(wigley_shape_l_1(h),c=:black,legend=nothing);Plots.plot!(	wigley_shape_r_1(h),c=:black,legend=nothing);Plots.plot!(	wigley_shape_l_2(h),c=:black,legend=nothing);Plots.plot!(	wigley_shape_r_2(h),c=:black,legend=nothing);Plots.plot!(Plots.Shape(x_coords, y_coords), aspect_ratio=:equal, lw=2, color=:black,title = "Wave height [m] at Froude number = $Fnq")
 end
 
@@ -756,7 +723,10 @@ md"""
 The plot above depicts the wave patern caused by the slotted wigley hull sailing at Fn = 0.2. The plot shows that the introduction of the slot causes a bow wave in front of the vertical section of the slot, which intuitively makes sense. However, it can also be noted that the one meter long vessel is inducing a wake with a wave height north of two meters. For the real world version of the vessel, this would correspond to wake waves of 800m amplitude. This is considered physically impossible, leading to the conclusion that the model above is not clearly depicting reality. This can be contributed to one of two errors:
 
 ##### Modelling error #####
-The potential flow solver does not take viscous damping into account. Since the shape of the vessel is quite aggressive (i.e. vertical aft wall, vertical slot wall), with a lot of near 90 degree angles, it is likely that the real world flow would experience high velocties in these areas. These high velocities would lead to high viscous damping in the real world scenrio, which cannot be modelled in the potential flow solver.
+1. The potential flow solver does not take viscous effects into account. Since the shape of the vessel is quite aggressive it is likely that the real world flow would experience high velocties in these areas. These high velocities would lead to viscous damping in the real world scenrio, which cannot be modelled in the potential flow solver.
+
+2. The model contains 90 degree angles in various places. These angles could lead to singularities in the potential, leading to non-realistic results. This source of error could be validated, and potentially omitted, by creating a model with curved edges rather than 90 degree angels. Due to time constraints, this validation is not performed in this study.
+
 
 ##### Human error #####
 It could be that there is an error in the geometry definition, leading to an incorrect solution. This can be checked by comparing the solution of the slotted wigley hull with the solution for the NURBS output.
@@ -964,16 +934,6 @@ begin
 	nothing
 end
 
-# ╔═╡ 073d70ef-da1e-47dd-b0e5-a532b936c883
-md"""
-## The study
-
- 1. **The importance of total vessel length** 
-
- 2. **Computing the speed range and the parameter variance range for all variables**
-Based on the vessel length computed above, the speed range over which each hull geometry is to be evaluated becomes:
-"""
-
 # ╔═╡ c45ce64f-2ae1-4120-adad-24c1f843498c
 # ╠═╡ disabled = true
 #=╠═╡
@@ -986,6 +946,16 @@ begin
 	df_speed = DataFrame(Value = value, Range = speed_ranges)
 end
   ╠═╡ =#
+
+# ╔═╡ 073d70ef-da1e-47dd-b0e5-a532b936c883
+md"""
+## The study
+
+ 1. **The importance of total vessel length** 
+
+ 2. **Computing the speed range and the parameter variance range for all variables**
+Based on the vessel length computed above, the speed range over which each hull geometry is to be evaluated becomes:
+"""
 
 # ╔═╡ 39c8e8f6-6852-4f3e-84b3-72e8c4e3db11
 md"""
@@ -1033,6 +1003,15 @@ md"""
 
 # ╔═╡ c2437329-a343-4909-af0a-55820fcce5b3
 
+
+# ╔═╡ 2bc4a9ed-2e7a-4eb9-8e1d-37939b665753
+using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, Plots, PlotlyBase,PlotlyKaleido, PlutoUI
+
+# ╔═╡ 2adecdf9-45d8-4c18-8227-fb0a554ea3ca
+# ╠═╡ disabled = true
+#=╠═╡
+using NeumannKelvin, Markdown, Plots
+  ╠═╡ =#
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -2725,7 +2704,7 @@ version = "1.4.1+2"
 # ╠═202dea43-7c21-4c75-b3ae-6e351a384bb7
 # ╟─2071ec6e-d91b-4760-a0e1-3148e1350896
 # ╠═7812bbc4-a0a9-42a0-a0ce-9da86ad380b7
-# ╟─e717c9c8-dae4-48cf-ad4d-d50d94652a33
+# ╠═e717c9c8-dae4-48cf-ad4d-d50d94652a33
 # ╠═cb4c1429-bf61-4cb0-8c4a-11433073d8a9
 # ╠═1e1562d3-e70b-4db8-84df-1587b64278cb
 # ╟─e4538923-8dde-46b3-8931-9e8c63acffff
@@ -2744,18 +2723,18 @@ version = "1.4.1+2"
 # ╠═301d6aed-a9f6-4a3c-9a41-0a4f693e1355
 # ╠═9998b3e0-a799-42a5-889a-91908d1268dd
 # ╠═744044c4-0ca8-400c-b049-71e16ef052d9
-# ╠═9fef423f-6f85-48ab-86fa-7687af6ce184
+# ╟─9fef423f-6f85-48ab-86fa-7687af6ce184
 # ╠═110b514a-6666-48f6-ba52-4b188caf9ca3
-# ╠═3079d163-b5b0-4ad8-aaeb-0c32fe721f21
-# ╠═9a2dc360-058b-4ba9-a477-bad65e2d2dae
+# ╟─3079d163-b5b0-4ad8-aaeb-0c32fe721f21
+# ╟─9a2dc360-058b-4ba9-a477-bad65e2d2dae
 # ╠═1c89e4be-6cb6-4c0b-a3b4-b48e07617470
-# ╠═e924cf54-c392-4728-bc0f-89b3722f9b5a
-# ╠═461ee2cd-e445-4503-9cc2-0fa43d874464
+# ╟─e924cf54-c392-4728-bc0f-89b3722f9b5a
+# ╟─461ee2cd-e445-4503-9cc2-0fa43d874464
 # ╟─68af513d-c457-49f8-ba7c-d6ca7c142975
 # ╠═f16e3fb3-7316-4a6d-a35d-7751fed391a7
-# ╠═08674063-c98a-403e-bf93-354da6e26a34
-# ╠═2652de72-75c0-4737-abea-e83c18ef73a8
-# ╠═5e4d5334-46b2-4935-8f55-27b06a6d1cc5
+# ╟─08674063-c98a-403e-bf93-354da6e26a34
+# ╟─2652de72-75c0-4737-abea-e83c18ef73a8
+# ╟─5e4d5334-46b2-4935-8f55-27b06a6d1cc5
 # ╟─96f047dc-eb1c-4520-bad0-b4670fbafe57
 # ╠═56a91a7a-1e7f-400d-b18b-4d35f66238e8
 # ╠═cb9e519b-d5e3-440f-8d5b-bc337fe1788e
