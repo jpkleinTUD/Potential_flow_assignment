@@ -5,7 +5,7 @@ using Markdown
 using InteractiveUtils
 
 # ╔═╡ 2adecdf9-45d8-4c18-8227-fb0a554ea3ca
-using NeumannKelvin, Markdown, Plots
+using NeumannKelvin, Markdown, Plots, PlotlyBase
 
 # ╔═╡ bc054f16-5c7a-4b8d-b9af-abe0e1965573
 using NeumannKelvin:kelvin,wavelike,nearfield
@@ -26,6 +26,9 @@ While this slot provides a lot of oppertunities from an operational point of vie
 After this introduction, the research question will be properly formulated. Next, the metholodogy used in this variance study will be explained. After that, the model that has been obtained by implementing the methodology will be validated by comparing the model to analytical and externally developed numerical results. After the model has been validated, the results from the variance study will be provided. Finally, the conclusion will provide a summary of the results of the study and will provide an answer to the research question.
 
 """
+
+# ╔═╡ 1c7cf1f3-e262-4e63-94e6-8b8e08528e43
+
 
 # ╔═╡ 5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
 md"""
@@ -399,9 +402,10 @@ intro
 ### Comparisson to wigley hull
 In order to validate the output from the model create using the grasshopper script, a reference that resembles the geometry of the grasshopper model had to be found. This reference was constructed by adapting the wigley hull as defined notebook "wigley.jl" (REF TO NOTEBOOK). 
 
+#### Double wigley hull ####
 The first step in the process of constructing a resembling geometry was to double the wigley hull, with an offset with respect to the center line. For this, it was chosen to explictly define the complete hull, instead of mirroring a half hull. While the mirroring would reduce computational time, the process of mirroring a half hull has the potential to create an additional source of human error. Since this geometry will be used as verification of the grasshopper model, minimizing the potential for error has been considered a priority above computational time. 
 
-The code block below shows the definition of two wigley hull's, that have an offset with respect to the center line. Below the code, the panels as created by the code block and the potential flow solution are plotted.
+The code block below shows the definition of two wigley hull's, that have an offset with respect to the center line. Below the code, the panels as created by the code block and the potential flow solution are plotted. Below that, the solution for the wigley demihull as computed by the "wigley.jl" notebook is plotted. This plot can be used to verify the solution for the double hull model.
 """
 
 # ╔═╡ 110b514a-6666-48f6-ba52-4b188caf9ca3
@@ -417,7 +421,7 @@ begin
 	wigley_shape_l_2(h,x=-(L/2):h:(L/2)) = Plots.Shape(x,wigley_WL.(x,-offset, 1))
 	wigley_shape_r_2(h,x=-(L/2):h:(L/2)) = Plots.Shape(x,wigley_WL.(x,-offset, -1))
 
-	function wigley_hull(hx,hz;D=1/8)
+	function wigley_double_hull(hx,hz;D=1/8)
 		# parabolic width equation and scaled 3D surface for the PS part of PS hull
 		η_l_1(ξ,ζ) = (1-ξ^2)*(1-ζ^2)+offset                
 	    S_l_1(ξ,ζ) = SA[0.5L*ξ,0.5B*η_l_1(ξ,ζ),-D*ζ]
@@ -434,14 +438,14 @@ begin
 		η_r_2(ξ,ζ) = -((1-ξ^2)*(1-ζ^2)+offset)               
 	    S_r_2(ξ,ζ) = SA[0.5L*ξ,0.5B*η_r_2(ξ,ζ),-D*ζ]
 		
-	    dξ = 1/round(0.5L/hx); ξ = 0.5dξ-1:dξ:1 # sampling in ξ
-	    dζ = 1/round(D/hz); ζ = 0.5dζ:dζ:1      # sampling in ζ
+	    dξ_1 = 1/round(0.5L/hx); ξ_1 = 0.5dξ_1-1:dξ_1:1 # sampling in ξ
+	    dζ_1 = 1/round(D/hz); ζ_1 = 0.5dζ_1:dζ_1:1      # sampling in ζ
 		
 	    # explicit defintion of all hull parts
-		panels_l_1 = param_props.(S_l_1,ξ,ζ',dξ,dζ) |> Table     
-	    panels_r_1 = param_props.(S_r_1,ξ,ζ',-dξ,dζ) |> Table
-		panels_l_2 = param_props.(S_l_2,ξ,ζ',dξ,dζ) |> Table
-		panels_r_2 = param_props.(S_r_2,ξ,ζ',-dξ,dζ) |> Table 
+		panels_l_1 = param_props.(S_l_1,ξ_1,ζ_1',dξ_1,dζ_1) |> Table     
+	    panels_r_1 = param_props.(S_r_1,ξ_1,ζ_1',-dξ_1,dζ_1) |> Table
+		panels_l_2 = param_props.(S_l_2,ξ_1,ζ_1',dξ_1,dζ_1) |> Table
+		panels_r_2 = param_props.(S_r_2,ξ_1,ζ_1',-dξ_1,dζ_1) |> Table 
 
 		# return concatinated hull
 		return vcat(panels_l_1, panels_r_1, panels_l_2, panels_r_2)
@@ -451,7 +455,7 @@ end
 # ╔═╡ 3079d163-b5b0-4ad8-aaeb-0c32fe721f21
 begin
 	h = 1/32
-	doublehull = wigley_hull(h,h); length(doublehull) 
+	doublehull = wigley_double_hull(h,h);
 	Plots.scatter3d(
 	eachrow(stack(doublehull.x))...,label=nothing,
 	ylims=(-1,1),zlims=(-0.5,0.5),
@@ -477,13 +481,14 @@ begin
 		∫kelvin(x,p;Fn,dz)+∫contour(x,p;Fn)
 	end
 	
-	ps = (ϕ=∫surface,Fn=Fnq)        # NamedTuple of keyword-arguments
-	q = influence(doublehull;ps...)\first.(doublehull.n); # solve for densities
+	ps_1 = (ϕ=∫surface,Fn=Fnq)        # NamedTuple of keyword-arguments
+	q_1 = influence(doublehull;ps_1...)\first.(doublehull.n) # solve for densities
 	### CODE ABOVE TAKEN DIRECTLY FROM WIGLEY.JL ###
+	nothing
 end
 
 # ╔═╡ 1c89e4be-6cb6-4c0b-a3b4-b48e07617470
-Plots.contourf(-1.5:h:1,-1:h:1,(x,y)->ζ(x,y,q,doublehull;ps...),
+Plots.contourf(-1.5:h:1,-0.8:h:0.8,(x,y)->ζ(x,y,q_1,doublehull;ps_1...),
 	c=:balance,aspect_ratio=:equal,clims=(-0.3,0.3));Plots.plot!(
 	wigley_shape_l_1(h),c=:black,legend=nothing);Plots.plot!(
 	wigley_shape_r_1(h),c=:black,legend=nothing);Plots.plot!(
@@ -491,14 +496,49 @@ Plots.contourf(-1.5:h:1,-1:h:1,(x,y)->ζ(x,y,q,doublehull;ps...),
 	wigley_shape_r_2(h),c=:black,legend=nothing)
 
 
-# ╔═╡ 68af513d-c457-49f8-ba7c-d6ca7c142975
+# ╔═╡ 9e9411be-06be-4be9-be69-646152d02a55
+begin
+	reflect(x::SVector;flip=SA[1,-1,1]) = x.*flip
+	reflect(p::NamedTuple;flip=SA[1,-1,1]) = (x=reflect(p.x;flip), 
+		n=reflect(p.n;flip), dA=p.dA, x₄=reflect.(p.x₄;flip))
+	
+	wigley_WL(x, unit) = unit*0.5B*(1-(2x)^2)
+	wigley_shape_l(h,x=-(L/2):h:(L/2)) = Plots.Shape(x,wigley_WL.(x, 1))
+	wigley_shape_r(h,x=-(L/2):h:(L/2)) = Plots.Shape(x,wigley_WL.(x, -1))
+
+	function wigley_hull(hx,hz;D=1/8)
+		η(ξ,ζ) = (1-ξ^2)*(1-ζ^2)                # parabolic width equation
+	    S(ξ,ζ) = SA[0.5L*ξ,0.5B*η(ξ,ζ),-D*ζ]    # scaled 3D surface
+	    dξ = 1/round(0.5L/hx); ξ = 0.5dξ-1:dξ:1 # sampling in ξ
+	    dζ = 1/round(D/hz); ζ = 0.5dζ:dζ:1      # sampling in ζ
+	    panels = param_props.(S,ξ,ζ',dξ,dζ) |> Table     
+	end
+
+	demihull = wigley_hull(h,h);
+
+	function ∫surface_S₂(x,p;kwargs...)  # y-symmetric potentials
+	    ∫surface(x,p;kwargs...)+∫surface(x,reflect(p,flip=SA[1,-1,1]);kwargs...)
+	end
+	
+	ps_2 = (ϕ=∫surface_S₂,Fn=Fnq)        # NamedTuple of keyword-arguments
+	q_2 = influence(demihull;ps_2...)\first.(demihull.n) # solve for densities
+	
+	nothing
+end
+
+# ╔═╡ 6d3731d1-3902-4e09-aab6-8be2bc4ef0d0
+Plots.contourf(-1.5:h:1,-0.8:h:0.8,(x,y)->ζ(x,y,q_2,demihull;ps_2...),
+	c=:balance,aspect_ratio=:equal,clims=(-0.3,0.3));Plots.plot!(
+	wigley_shape_l(h),c=:black,legend=nothing);Plots.plot!(
+	wigley_shape_r(h),c=:black,legend=nothing)
+
+# ╔═╡ bfbc8376-b5fa-4f92-a321-9690204e440a
 md"""
-From the plot you can see.....
+When comparing the plots above, it can be observed that the double hull solution is pratically identical to a summation of an offset demihull solution. Thus, the double hull model is considered to be valid.
 
+#### Double wigley hull with slot ####
+The hull as defined above is then used to define a hull shape that resembles the hull of the Pioneering spirit. This is acchieved by adding a plate to the back, bottom and middle of the double hull. This encloses a part of the hull from the water. Furthermore, the panels of the old double hull within this enclosed section are to be removed. This is done by defining the inner wigley hull sections only for the part in the slot. This definition can be seen in the code block below. Below that, the panels that define the hull are plotted. Finally, the resulting potential flow solution is plotted.
 
-
-### Comparisson to other numerical methods
-(Hopelijk die van kalea)
 """
 
 # ╔═╡ 96f047dc-eb1c-4520-bad0-b4670fbafe57
@@ -776,15 +816,25 @@ begin
 	@eval Main.PlutoRunner format_output(x::AbstractArray{Float64}; context = default_iocontext) = format_output_default(round.(x; digits = 3), context)
 end;
 
+# ╔═╡ b6190c14-5f0a-4505-8b25-86717b43b087
+begin
+	plotly()
+	centers(panels) = eachrow(stack(panels.x))
+	@eval Main.PlutoRunner format_output(x::Float64; context = default_iocontext) = format_output_default(round(x; digits = 3), context)
+	@eval Main.PlutoRunner format_output(x::AbstractArray{Float64}; context = default_iocontext) = format_output_default(round.(x; digits = 3), context)	
+end;
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 NeumannKelvin = "7f078b06-e5c4-4cf8-bb56-b92882a0ad03"
+PlotlyBase = "a03496cd-edff-5a9b-9e67-9cda94a718b5"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 
 [compat]
 NeumannKelvin = "~0.5.1"
+PlotlyBase = "~0.8.20"
 Plots = "~1.40.9"
 """
 
@@ -794,7 +844,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.3"
 manifest_format = "2.0"
-project_hash = "49a4c48d9a580d7807cb911577255fbfc832a436"
+project_hash = "6d7bbf8f2a65363d0605f85b866d3011bf407e45"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -1588,6 +1638,12 @@ git-tree-sha1 = "3b31172c032a1def20c98dae3f2cdc9d10e3b561"
 uuid = "36c8627f-9965-5494-a995-c6b170f724f3"
 version = "1.56.1+0"
 
+[[deps.Parameters]]
+deps = ["OrderedCollections", "UnPack"]
+git-tree-sha1 = "34c0e9ad262e5f7fc75b10a9952ca7692cfc5fbe"
+uuid = "d96e819e-fc66-5662-9728-84c9c7592b0a"
+version = "0.12.3"
+
 [[deps.Parsers]]
 deps = ["Dates", "PrecompileTools", "UUIDs"]
 git-tree-sha1 = "8489905bcdbcfac64d1daa51ca07c0d8f0283821"
@@ -1625,6 +1681,24 @@ deps = ["ColorSchemes", "Colors", "Dates", "PrecompileTools", "Printf", "Random"
 git-tree-sha1 = "3ca9a356cd2e113c420f2c13bea19f8d3fb1cb18"
 uuid = "995b91a9-d308-5afd-9ec6-746e21dbc043"
 version = "1.4.3"
+
+[[deps.PlotlyBase]]
+deps = ["ColorSchemes", "Colors", "Dates", "DelimitedFiles", "DocStringExtensions", "JSON", "LaTeXStrings", "Logging", "Parameters", "Pkg", "REPL", "Requires", "Statistics", "UUIDs"]
+git-tree-sha1 = "90af5c9238c1b3b25421f1fdfffd1e8fca7a7133"
+uuid = "a03496cd-edff-5a9b-9e67-9cda94a718b5"
+version = "0.8.20"
+
+    [deps.PlotlyBase.extensions]
+    DataFramesExt = "DataFrames"
+    DistributionsExt = "Distributions"
+    IJuliaExt = "IJulia"
+    JSON3Ext = "JSON3"
+
+    [deps.PlotlyBase.weakdeps]
+    DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+    Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+    IJulia = "7073ff75-c697-5162-941a-fcdaad2a7d2a"
+    JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 
 [[deps.Plots]]
 deps = ["Base64", "Contour", "Dates", "Downloads", "FFMPEG", "FixedPointNumbers", "GR", "JLFzf", "JSON", "LaTeXStrings", "Latexify", "LinearAlgebra", "Measures", "NaNMath", "Pkg", "PlotThemes", "PlotUtils", "PrecompileTools", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "RelocatableFolders", "Requires", "Scratch", "Showoff", "SparseArrays", "Statistics", "StatsBase", "TOML", "UUIDs", "UnicodeFun", "UnitfulLatexify", "Unzip"]
@@ -1972,6 +2046,11 @@ deps = ["Random", "SHA"]
 uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 version = "1.11.0"
 
+[[deps.UnPack]]
+git-tree-sha1 = "387c1f73762231e86e0c9c5443ce3b4a0a9a0c2b"
+uuid = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
+version = "1.0.2"
+
 [[deps.Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 version = "1.11.0"
@@ -2310,6 +2389,7 @@ version = "1.4.1+2"
 # ╔═╡ Cell order:
 # ╟─fa570bdd-3772-4750-980d-d75cf268ffcf
 # ╠═2adecdf9-45d8-4c18-8227-fb0a554ea3ca
+# ╠═1c7cf1f3-e262-4e63-94e6-8b8e08528e43
 # ╟─5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
 # ╟─c7786892-73cf-4e23-bfe6-339feae6f4de
 # ╟─ef64d57f-30e6-45dd-b598-65728d31b77b
@@ -2340,9 +2420,11 @@ version = "1.4.1+2"
 # ╟─9fef423f-6f85-48ab-86fa-7687af6ce184
 # ╠═110b514a-6666-48f6-ba52-4b188caf9ca3
 # ╟─3079d163-b5b0-4ad8-aaeb-0c32fe721f21
-# ╠═9a2dc360-058b-4ba9-a477-bad65e2d2dae
-# ╠═1c89e4be-6cb6-4c0b-a3b4-b48e07617470
-# ╟─68af513d-c457-49f8-ba7c-d6ca7c142975
+# ╟─9a2dc360-058b-4ba9-a477-bad65e2d2dae
+# ╟─1c89e4be-6cb6-4c0b-a3b4-b48e07617470
+# ╟─9e9411be-06be-4be9-be69-646152d02a55
+# ╟─6d3731d1-3902-4e09-aab6-8be2bc4ef0d0
+# ╟─bfbc8376-b5fa-4f92-a321-9690204e440a
 # ╟─96f047dc-eb1c-4520-bad0-b4670fbafe57
 # ╠═56a91a7a-1e7f-400d-b18b-4d35f66238e8
 # ╠═cb9e519b-d5e3-440f-8d5b-bc337fe1788e
@@ -2369,5 +2451,6 @@ version = "1.4.1+2"
 # ╟─0cbe5265-a2d2-45b6-bc8a-60173db020f0
 # ╟─4d344c68-f99a-4df5-be6f-cdf4cff29731
 # ╟─c2437329-a343-4909-af0a-55820fcce5b3
+# ╠═b6190c14-5f0a-4505-8b25-86717b43b087
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
