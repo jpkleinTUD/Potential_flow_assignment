@@ -28,7 +28,10 @@ After this introduction, the research question will be properly formulated. Next
 """
 
 # ╔═╡ 1c7cf1f3-e262-4e63-94e6-8b8e08528e43
-
+begin
+	@eval Main.PlutoRunner format_output(x::Float64; context = default_iocontext) = format_output_default(round(x; digits = 3), context)
+	@eval Main.PlutoRunner format_output(x::AbstractArray{Float64}; context = default_iocontext) = format_output_default(round.(x; digits = 3), context)	
+end
 
 # ╔═╡ 5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
 md"""
@@ -102,7 +105,7 @@ end
 # ╔═╡ adc7fdd3-b339-4573-9717-34d7d4ac0324
 # ╠═╡ disabled = true
 #=╠═╡
-using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, Plots, PlotlyBase,PlotlyKaleido, PlutoUI
+using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, PlotlyBase,PlotlyKaleido, PlutoUI
   ╠═╡ =#
 
 # ╔═╡ aa0202ef-8dea-4c3f-a017-fe367efca375
@@ -447,7 +450,7 @@ begin
 		panels_l_2 = param_props.(S_l_2,ξ_1,ζ_1',dξ_1,dζ_1) |> Table
 		panels_r_2 = param_props.(S_r_2,ξ_1,ζ_1',-dξ_1,dζ_1) |> Table 
 
-		# return concatinated hull
+		# return concatenated hull
 		return vcat(panels_l_1, panels_r_1, panels_l_2, panels_r_2)
 	end
 end
@@ -463,6 +466,12 @@ begin
 	c=palette([:grey,:green], 2),
 	title = "Double Wigley hull with waterline panels marked")
 end
+
+# ╔═╡ ebc1e5a2-30a7-436b-9db1-f9241c104738
+# ╠═╡ disabled = true
+#=╠═╡
+
+  ╠═╡ =#
 
 # ╔═╡ 9a2dc360-058b-4ba9-a477-bad65e2d2dae
 begin
@@ -488,6 +497,8 @@ begin
 end
 
 # ╔═╡ 1c89e4be-6cb6-4c0b-a3b4-b48e07617470
+# ╠═╡ disabled = true
+#=╠═╡
 Plots.contourf(-1.5:h:1,-0.8:h:0.8,(x,y)->ζ(x,y,q_1,doublehull;ps_1...),
 	c=:balance,aspect_ratio=:equal,clims=(-0.3,0.3));Plots.plot!(
 	wigley_shape_l_1(h),c=:black,legend=nothing);Plots.plot!(
@@ -495,6 +506,7 @@ Plots.contourf(-1.5:h:1,-0.8:h:0.8,(x,y)->ζ(x,y,q_1,doublehull;ps_1...),
 	wigley_shape_l_2(h),c=:black,legend=nothing);Plots.plot!(
 	wigley_shape_r_2(h),c=:black,legend=nothing)
 
+  ╠═╡ =#
 
 # ╔═╡ 9e9411be-06be-4be9-be69-646152d02a55
 begin
@@ -502,9 +514,9 @@ begin
 	reflect(p::NamedTuple;flip=SA[1,-1,1]) = (x=reflect(p.x;flip), 
 		n=reflect(p.n;flip), dA=p.dA, x₄=reflect.(p.x₄;flip))
 	
-	wigley_WL(x, unit) = unit*0.5B*(1-(2x)^2)
-	wigley_shape_l(h,x=-(L/2):h:(L/2)) = Plots.Shape(x,wigley_WL.(x, 1))
-	wigley_shape_r(h,x=-(L/2):h:(L/2)) = Plots.Shape(x,wigley_WL.(x, -1))
+	wigley_WL_2(x, unit) = unit*0.5B*(1-(2x)^2)
+	wigley_shape_l(h,x=-(L/2):h:(L/2)) = Plots.Shape(x,wigley_WL_2.(x, 1))
+	wigley_shape_r(h,x=-(L/2):h:(L/2)) = Plots.Shape(x,wigley_WL_2.(x, -1))
 
 	function wigley_hull(hx,hz;D=1/8)
 		η(ξ,ζ) = (1-ξ^2)*(1-ζ^2)                # parabolic width equation
@@ -527,10 +539,13 @@ begin
 end
 
 # ╔═╡ 6d3731d1-3902-4e09-aab6-8be2bc4ef0d0
+# ╠═╡ disabled = true
+#=╠═╡
 Plots.contourf(-1.5:h:1,-0.8:h:0.8,(x,y)->ζ(x,y,q_2,demihull;ps_2...),
 	c=:balance,aspect_ratio=:equal,clims=(-0.3,0.3));Plots.plot!(
 	wigley_shape_l(h),c=:black,legend=nothing);Plots.plot!(
-	wigley_shape_r(h),c=:black,legend=nothing)
+	wigley_shape_r(h),c=:black,legend=nothing, title="Wave height [m] at Froude number = $Fnq"))
+  ╠═╡ =#
 
 # ╔═╡ bfbc8376-b5fa-4f92-a321-9690204e440a
 md"""
@@ -540,6 +555,90 @@ When comparing the plots above, it can be observed that the double hull solution
 The hull as defined above is then used to define a hull shape that resembles the hull of the Pioneering spirit. This is acchieved by adding a plate to the back, bottom and middle of the double hull. This encloses a part of the hull from the water. Furthermore, the panels of the old double hull within this enclosed section are to be removed. This is done by defining the inner wigley hull sections only for the part in the slot. This definition can be seen in the code block below. Below that, the panels that define the hull are plotted. Finally, the resulting potential flow solution is plotted.
 
 """
+
+# ╔═╡ 22f4c6a1-864c-4ad2-ab1a-d75f2eacf57b
+begin
+	slot_len = 0.3 	# Note slot length should be strictly larger then vessel len
+
+	# define limits for plotting the filled in hull section
+	x_coords = [(-L/2), (L/2-slot_len), (L/2-slot_len), (-L/2), (-L/2)]
+	y_coords = [-0.5B*offset, -0.5B*offset, 0.5B*offset, 0.5B*offset, -0.5B*offset] 
+
+	function wigley_hull_slot(hx,hz;D=1/8)
+		# parabolic width equation and scaled 3D surface for the PS part of PS hull
+		η_l_1(ξ,ζ) = (1-ξ^2)*(1-ζ^2)+offset                
+	    S_l_1(ξ,ζ) = SA[0.5L*ξ,0.5B*η_l_1(ξ,ζ),-D*ζ]
+
+		# parabolic width equation and scaled 3D surface for the SB part of PS hull
+		η_r_1(ξ,ζ) = -((1-ξ^2)*(1-ζ^2)-offset)                
+	    S_r_1(ξ,ζ) = SA[ξ,0.5B*η_r_1(ξ,ζ),-D*ζ]    
+
+		# parabolic width equation and scaled 3D surface for the PS part of SB hull
+		η_l_2(ξ,ζ) = (1-ξ^2)*(1-ζ^2)-offset
+	    S_l_2(ξ,ζ) = SA[ξ,0.5B*η_l_2(ξ,ζ),-D*ζ]
+
+		# parabolic width equation and scaled 3D surface for the SB part of SB hull
+		η_r_2(ξ,ζ) = -((1-ξ^2)*(1-ζ^2)+offset)               
+	    S_r_2(ξ,ζ) = SA[0.5L*ξ,0.5B*η_r_2(ξ,ζ),-D*ζ]
+
+		# ξ for inner hull of bow sections
+	    dξ_in = 1/round(0.5L/hx); ξ_in = (L/2-slot_len+0.5dξ_in):dξ_in:(L/2)
+		# ξ for inner hull of bottom plate 
+		ξ_in2 = -(L/2)+0.5dξ_in:dξ_in:(L/2-slot_len-0.5dξ_in)
+		# ξ for outer hull			
+	    dξ_out = 1/round(0.5L/hx); ξ_out = 0.5dξ_out-1:dξ_out:1 	
+			
+	    dζ = 1/round(D/hz); ζ = 0.5dζ:dζ:1      		# sampling in ζ
+		dω = 4/round(offset/hz); ω = 0.5dω:dω:1         # sampling in ξ
+
+		# explicit defintion of side hull parts
+		panels_l_1 = param_props.(S_l_1,ξ_out,ζ',dξ_out,dζ) |> Table     
+	    panels_r_1 = param_props.(S_r_1,ξ_in,ζ',-dξ_in,dζ) |> Table
+		panels_l_2 = param_props.(S_l_2,ξ_in,ζ',dξ_in,dζ) |> Table
+		panels_r_2 = param_props.(S_r_2,ξ_out,ζ',-dξ_out,dζ) |> Table 
+
+		η_bp(ω) = (B*offset)*ω-(B*offset/2)		# y-def for back and bottom plate 
+		η_fp(ω) = (B*offset)*ω-(B*offset/2)		# y-def for front plate
+		S_bap(ω,ζ) = SA[-(L/2),η_bp(ω),-D*ζ]    # back plate function
+		S_bop(ω,ξ) = SA[ξ,η_bp(ω),-D] 		# bottom plate function
+
+		# explicit defintion of back and bottom plates
+		panels_backplate = param_props.(S_bap,ω,ζ',dω,dζ) |> Table
+		panels_bottomplate = param_props.(S_bop,ω,ξ_in2',dω,dξ_in) |> Table
+
+		# define front plate by defining start/stop locations for each height
+		front_plate = mapreduce(vcat, 0.5dζ:dζ:1) do ζ
+		    start = -0.5*B*((1-(L/2-slot_len)^2)*(1-ζ^2)-offset)
+			stop = 0.5*B*((1-(L/2-slot_len)^2)*(1-ζ^2)-offset)  
+			η_fp(ω) = 2stop*ω+start
+			S_fp(ω,ζ) = SA[(L/2-slot_len),η_fp(ω),-D*ζ]
+			front_row = param_props.(S_fp,ω,ζ',dω,dζ) |> Table
+		end
+		
+		# return concatenated hull
+		return vcat(panels_l_1, panels_r_1, panels_l_2, panels_r_2, panels_backplate, panels_bottomplate, front_plate)
+	end
+end
+
+# ╔═╡ f8365651-5b85-4ee4-a61f-2bebda8540af
+begin
+	hull_slot = wigley_hull_slot(h,h);
+	Plots.scatter3d(
+	eachrow(stack(hull_slot.x))...,label=nothing,
+	ylims=(-1,1),zlims=(-0.5,0.5),
+	marker_z=@.(last(hull_slot.x)^2<hull_slot.dA),
+	c=palette([:grey,:green], 2),
+	title = "Slotted hull with waterline panels marked")
+end
+
+# ╔═╡ 424b5e14-e65f-4029-a2af-7983988061d9
+begin
+	ps_3 = (ϕ=∫surface,Fn=Fnq)        # NamedTuple of keyword-arguments
+	q_3 = influence(hull_slot;ps_3...)\first.(hull_slot.n) # solve for densities
+
+	Plots.contourf(-1.5:h:1,-0.8:h:0.8,(x,y)->ζ(x,y,q_3,hull_slot;ps_3...),
+		c=:balance,aspect_ratio=:equal,clims=(-3,3));Plots.plot!(wigley_shape_l_1(h),c=:black,legend=nothing);Plots.plot!(	wigley_shape_r_1(h),c=:black,legend=nothing);Plots.plot!(	wigley_shape_l_2(h),c=:black,legend=nothing);Plots.plot!(	wigley_shape_r_2(h),c=:black,legend=nothing);Plots.plot!(Plots.Shape(x_coords, y_coords), aspect_ratio=:equal, lw=2, color=:black,title = "Wave height [m] at Froude number = $Fnq")
+end
 
 # ╔═╡ 96f047dc-eb1c-4520-bad0-b4670fbafe57
 md"""### Comparison between demi-hull and full hull"""
@@ -819,9 +918,7 @@ end;
 # ╔═╡ b6190c14-5f0a-4505-8b25-86717b43b087
 begin
 	plotly()
-	centers(panels) = eachrow(stack(panels.x))
-	@eval Main.PlutoRunner format_output(x::Float64; context = default_iocontext) = format_output_default(round(x; digits = 3), context)
-	@eval Main.PlutoRunner format_output(x::AbstractArray{Float64}; context = default_iocontext) = format_output_default(round.(x; digits = 3), context)	
+
 end;
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -2419,12 +2516,16 @@ version = "1.4.1+2"
 # ╠═744044c4-0ca8-400c-b049-71e16ef052d9
 # ╟─9fef423f-6f85-48ab-86fa-7687af6ce184
 # ╠═110b514a-6666-48f6-ba52-4b188caf9ca3
-# ╟─3079d163-b5b0-4ad8-aaeb-0c32fe721f21
-# ╟─9a2dc360-058b-4ba9-a477-bad65e2d2dae
-# ╟─1c89e4be-6cb6-4c0b-a3b4-b48e07617470
+# ╠═3079d163-b5b0-4ad8-aaeb-0c32fe721f21
+# ╠═ebc1e5a2-30a7-436b-9db1-f9241c104738
+# ╠═9a2dc360-058b-4ba9-a477-bad65e2d2dae
+# ╠═1c89e4be-6cb6-4c0b-a3b4-b48e07617470
 # ╟─9e9411be-06be-4be9-be69-646152d02a55
-# ╟─6d3731d1-3902-4e09-aab6-8be2bc4ef0d0
+# ╠═6d3731d1-3902-4e09-aab6-8be2bc4ef0d0
 # ╟─bfbc8376-b5fa-4f92-a321-9690204e440a
+# ╠═22f4c6a1-864c-4ad2-ab1a-d75f2eacf57b
+# ╠═f8365651-5b85-4ee4-a61f-2bebda8540af
+# ╠═424b5e14-e65f-4029-a2af-7983988061d9
 # ╟─96f047dc-eb1c-4520-bad0-b4670fbafe57
 # ╠═56a91a7a-1e7f-400d-b18b-4d35f66238e8
 # ╠═cb9e519b-d5e3-440f-8d5b-bc337fe1788e
