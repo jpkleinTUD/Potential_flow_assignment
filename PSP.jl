@@ -4,6 +4,21 @@
 using Markdown
 using InteractiveUtils
 
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    #! format: off
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+    #! format: on
+end
+
+# ╔═╡ 2bc4a9ed-2e7a-4eb9-8e1d-37939b665753
+using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, Plots, PlotlyBase,PlotlyKaleido, PlutoUI
+
 # ╔═╡ 480da64b-20da-4baa-b40a-4442a689f22a
 begin 
 	using NeumannKelvin:kelvin,wavelike,nearfield
@@ -243,7 +258,7 @@ function createPanel(vertices::Array{Array{Float64, 1}, 1},
 	
 	wl_panel = false;
 	
-	if any([vertex[3]>-1/50 for vertex in face_vertices])
+	if any([vertex[3]>=0 for vertex in face_vertices])
 		wl_panel=true
 	end
 	
@@ -401,44 +416,67 @@ Using these functions the second sub-question is answered: "How can the hull be 
 # ╔═╡ 7e195849-db71-401b-8c3c-68c712135390
 md"""
 ## Importing a custom mesh
+
+With all the necessary functions defined, models created with the Grasshopper tool can now be imported. As a demonstration of the method two hull forms will be imported and solved for, one a full hull and the other a demi-hull.
+
+The size of the models is 1x1m and is they are made with the following parameters:
+
+| Parameter | Value | 
+| :--------- | -----: |
+| Hull length | 0.5m |
+| Slot width | 0.5m |
+| Bow width | 0.25m | 
+| Bow length | 0.5m | 
+| Draught | 0.25m | 
+| Bow radius (top) | 83% |
+| Bow radius (side) | 53% |
+| Bilge radius | 23% |
+
+The radii are defined as percentages of the bow width (Top radius) and draught (Side and bilge radius)
+
+"""
+
+# ╔═╡ 41490feb-1eaf-4273-bbe2-7c7f8b1512d4
+md"""
+### Importing panels
 """
 
 # ╔═╡ 3006e2d4-c8b9-48a3-9857-5ab15b59238e
-# ╠═╡ disabled = true
-#=╠═╡
-panels, shape, length_ps, h_mean = importMesh(joinpath(data_folder, "small_ps/PS_hull_0312_21-05_double_small_fine.json"));
-  ╠═╡ =#
+pᵈ, sᵈ, lᵈ, hᵈₘ = importMesh(joinpath(@__DIR__, "data", "small_ps", "PS_hull_0312_21-05_double_small_fine.json"));
+
+# ╔═╡ 580e10df-bdea-4ad7-aa99-facacc160e90
+pʰ, sʰ, lʰ, hʰₘ = importMesh(joinpath(@__DIR__, "data", "small_ps", "PS_hull_0312_22-18_half_small_fine.json"));
 
 # ╔═╡ a0c223be-1c3e-4fc2-aa5b-e6b6e077eb40
-# ╠═╡ disabled = true
-#=╠═╡
 md"""
-Plot panels? $(@bind plot_panels CheckBox(default=false))
+Plot panels scatterplot? For performance this is optional.
+
+$(@bind plot_panels CheckBox(default=false))
 """
-  ╠═╡ =#
 
 # ╔═╡ b2203672-3079-49ec-a7f4-e09804136b86
-# ╠═╡ disabled = true
-#=╠═╡
 begin
 	if plot_panels
-		Plots.scatter3d(
-			eachrow(stack(panels.x))...,label=nothing,
-			marker_z=@.(panels.wl),
+		plotly()
+		plot(Plots.scatter3d(
+			eachrow(stack(pᵈ.x[1:5:end]))...,label=nothing,
+			marker_z=@.(pᵈ.wl[1:5:end]),
 			c=palette([:grey,:green], 2),
-			title = "PS hull with waterline panels marked", aspect_ratio=:equal)
+			title = "PS hull with waterline panels marked", aspect_ratio=1.0),
+			Plots.scatter3d(
+			eachrow(stack(pʰ.x[1:5:end]))...,label=nothing,
+			marker_z=@.(pʰ.wl[1:5:end]),
+			c=palette([:grey,:green], 2),
+			title = "PS hull with waterline panels marked", aspect_ratio=1.0),
+			layout=(1,2),size=(600,300))
 	end
 end
-  ╠═╡ =#
 
 # ╔═╡ 8546b716-93fc-4372-81be-f72566f8ad9d
 md"""Using the code from class the source strengths can be solved"""
 
 # ╔═╡ 277b39c7-d1a6-44dc-ab94-0df434f45ebc
-# ╠═╡ disabled = true
-#=╠═╡
 
-  ╠═╡ =#
 
 # ╔═╡ f34a6fa6-2d59-41ad-93fd-e431c52357c9
 # ╠═╡ disabled = true
@@ -2713,8 +2751,10 @@ version = "1.4.1+2"
 # ╠═cbe65c11-2ee2-4439-8d47-efa8fa9eccdc
 # ╟─223f5aa4-fa41-4414-94b3-6b125e9091e0
 # ╟─7e195849-db71-401b-8c3c-68c712135390
+# ╟─41490feb-1eaf-4273-bbe2-7c7f8b1512d4
 # ╠═3006e2d4-c8b9-48a3-9857-5ab15b59238e
-# ╠═a0c223be-1c3e-4fc2-aa5b-e6b6e077eb40
+# ╠═580e10df-bdea-4ad7-aa99-facacc160e90
+# ╟─a0c223be-1c3e-4fc2-aa5b-e6b6e077eb40
 # ╠═b2203672-3079-49ec-a7f4-e09804136b86
 # ╟─8546b716-93fc-4372-81be-f72566f8ad9d
 # ╠═277b39c7-d1a6-44dc-ab94-0df434f45ebc
