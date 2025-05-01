@@ -16,6 +16,9 @@ macro bind(def, element)
     #! format: on
 end
 
+# ╔═╡ 2bc4a9ed-2e7a-4eb9-8e1d-37939b665753
+using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, Plots, PlotlyBase,PlotlyKaleido, PlutoUI
+
 # ╔═╡ 480da64b-20da-4baa-b40a-4442a689f22a
 begin 
 	using NeumannKelvin:kelvin,wavelike,nearfield
@@ -66,6 +69,9 @@ The following sub-questions were investigated:
 
 The final goal of the study is to develop a method to improve the efficiency of the most time-consuming part of potential flow simulation—the creation of the model. [1]  
 """
+
+# ╔═╡ 2ba35c63-ea02-4f9e-860a-6e561aef1749
+nothing
 
 # ╔═╡ 5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
 md"""
@@ -206,6 +212,9 @@ data = {"ship_info": {"length": length,
 if activate:
     with open(directory + filename, mode="w+") as f:
         json.dump(data, f)
+```
+
+This answers the first sub-question: "What format does the hull need to have to be exported to Julia?"
 """
 
 # ╔═╡ 694c01ed-ca88-4bc4-8f97-541be437b524
@@ -434,11 +443,18 @@ $(@bind plot_panels CheckBox(default=false))
 # ╔═╡ b2203672-3079-49ec-a7f4-e09804136b86
 begin
 	if plot_panels
-		Plots.scatter3d(
-			eachrow(stack(panels.x))...,label=nothing,
-			marker_z=@.(panels.wl),
+		plot(Plots.scatter3d(
+			eachrow(stack(pᵈ.x))...,label=nothing,
+			marker_z=@.(pᵈ.wl),
 			c=palette([:grey,:green], 2),
-			title = "PS hull with waterline panels marked", aspect_ratio=:equal)
+			title = "PS hull with waterline panels marked", aspect_ratio=:equal),
+			Plots.scatter3d(
+			eachrow(stack(pʰ.x))...,label=nothing,
+			marker_z=@.(pʰ.wl),
+			c=palette([:grey,:green], 2),
+			title = "PS demi-hull with waterline panels marked", aspect_ratio=:equal),
+			layout=(1, 2)
+		)
 	end
 end
 
@@ -462,15 +478,15 @@ The propsed method succeeds at creating very similar free surface elevation patt
 """
 
 # ╔═╡ e2642f16-d6e9-4d5f-8873-887d733a4013
-added_mass(pᵈ; psᵈ)
+added_mass(pᵈ; psᵈ...)
 
 # ╔═╡ 05347ca0-89b9-4f40-8c97-091b07c0cddf
-added_mass(pʰ; psʰ)
+added_mass(pʰ; psʰ...)
 
 # ╔═╡ 229c3961-a2b8-43ea-ab5a-2574f9c1a809
 begin
-	Cwᵈ = steady_force(qᵈ, pᵈ; psᵈ)[1]
-	Cwʰ = steady_force(qʰ, pʰ; psʰ)[1]
+	Cwᵈ = steady_force(qᵈ, pᵈ; psᵈ...)[1]
+	Cwʰ = steady_force(qʰ, pʰ; psʰ...)[1]
 	println("Cw full hull: $(Cwᵈ). Half hull: $(Cwʰ)")
 	println("Difference: $(Cwᵈ - Cwʰ)")
 end
@@ -786,16 +802,15 @@ md"""
 
 # ╔═╡ c2437329-a343-4909-af0a-55820fcce5b3
 md"""
-This notebook outlined a study into the use of Grasshopper3D be used to create complex hull shapes compatible with the NeumannKelvin.jl package. 
+This notebook outlined a study into the use of Grasshopper3D to create complex hull shapes compatible with the NeumannKelvin.jl package.
 
-First, it has been investigated what workflow is required in order to retrieve a hull description that is usable with the NeumannKelvin packages. It has been found that the hull format is to be exported as a JSON file. Furthermore, three functions have been written in order to convert the input into a hull description compatible with the NeumannKelvin packages: "importMesh", "createPanel" and "psShape".
+First, the required workflow to retrieve a hull description usable with the NeumannKelvin package has been investigated. It has been found that the hull format should be exported as a JSON file. Furthermore, three functions have been written to convert the input into a hull description compatible with the NeumannKelvin package: "importMesh," "createPanel," and "psShape."
 
-After that, the wave pattern induced by the hull shape has been analyzed using the NeumannKelvin packages. This wave pattern was then compared to the wave pattern induced by a wigley hull that has been modified such that its shape is comparable to that of the grasshopper input hull. While the absolute values of the wave patterns display unphysical behaviour, their shapes resemble both eachother, and a wave pattern that is intuitively expected for the hull shapes. Therefore it has been concluded that, while this study was not able to accurately define the wave patern that is induced by a complex hull shape, it is considered possible with the employed methodology.
+After that, the wave pattern induced by the hull shape has been analyzed using the NeumannKelvin package. This wave pattern was then compared to the wave pattern induced by a Wigley hull that was modified to resemble the Grasshopper input hull. While the absolute values of the wave patterns display unphysical behavior, their shapes resemble both each other and a wave pattern that is intuitively expected for the hull shapes. Therefore, it has been concluded that, while this study was not able to accurately define the wave pattern induced by a complex hull shape, it is considered possible with the employed methodology.
 
-Addtionally, the use of a demi-hull in order to improve processing ability has been studied. Since neither the model for the demi-hull nor the full model displayed converging behaviour, the answer to this subquestion remains indifferent. 
+Additionally, the use of a demi-hull to improve processing ability has been studied. Since neither the model for the demi-hull nor the full model displayed converging behavior, the answer to this subquestion remains inconclusive.
 
-Finally, it has been concluded that the study above has not been able to compute valid results. However, given more time, the methodology outlined above is considered promissing in the field of complex potential flow modelling.
-
+Finally, it has been concluded that the study above has not been able to compute valid results. However, given more time, the methodology outlined above is considered promising in the field of complex potential flow modeling.
 """
 
 # ╔═╡ fcd9dd5a-1d3a-4255-94d5-ac2d9f90a4d1
@@ -813,6 +828,19 @@ md"""
 (Accessed: 4 March 2025)
 
 """
+
+# ╔═╡ 9998b3e0-a799-42a5-889a-91908d1268dd
+begin
+plotly()
+p = plot(
+Plots.contourf(-2:0.1:2,-2:0.1:2, (x,y)->2ζ(x,y,qᵈ, pᵈ ;psᵈ...),
+	c=:balance, aspect_ratio=:equal),
+Plots.contourf(-2:0.1:2,-2:0.1:2, (x,y)->2ζ(x,y,qʰ,pʰ ;psʰ...),
+	c=:balance, aspect_ratio=:equal),
+
+layout=(1, 2), size=(600,300))
+
+end
 
 # ╔═╡ b40cf08b-81ef-4055-9cdc-e7ef647a4830
 # ╠═╡ disabled = true
@@ -871,68 +899,11 @@ begin
 end
   ╠═╡ =#
 
-# ╔═╡ 2adecdf9-45d8-4c18-8227-fb0a554ea3ca
-using NeumannKelvin, Markdown, Plots
-nothing
-
-# ╔═╡ 4d344c68-f99a-4df5-be6f-cdf4cff29731
-md"""
-## Conclusion
-"""
-
-# ╔═╡ c2437329-a343-4909-af0a-55820fcce5b3
-md"""
-This notebook outlined a study into the use of Grasshopper3D to create complex hull shapes compatible with the NeumannKelvin.jl package.
-
-First, the required workflow to retrieve a hull description usable with the NeumannKelvin package has been investigated. It has been found that the hull format should be exported as a JSON file. Furthermore, three functions have been written to convert the input into a hull description compatible with the NeumannKelvin package: "importMesh," "createPanel," and "psShape."
-
-After that, the wave pattern induced by the hull shape has been analyzed using the NeumannKelvin package. This wave pattern was then compared to the wave pattern induced by a Wigley hull that was modified to resemble the Grasshopper input hull. While the absolute values of the wave patterns display unphysical behavior, their shapes resemble both each other and a wave pattern that is intuitively expected for the hull shapes. Therefore, it has been concluded that, while this study was not able to accurately define the wave pattern induced by a complex hull shape, it is considered possible with the employed methodology.
-
-Additionally, the use of a demi-hull to improve processing ability has been studied. Since neither the model for the demi-hull nor the full model displayed converging behavior, the answer to this subquestion remains inconclusive.
-
-Finally, it has been concluded that the study above has not been able to compute valid results. However, given more time, the methodology outlined above is considered promising in the field of complex potential flow modeling.
-"""
-
-# ╔═╡ 1d56fa89-f345-4502-b7da-3128b62384de
-nothing
-
-# ╔═╡ e77289b9-b7d6-4a20-9b09-777ee67f4a1a
-md"""
-## References
-[1] Weymouth, G., NumericalShipHydro repository, Available at: https://github.com/weymouth/NumericalShipHydro/tree/main/notebooks/geometries.jl
-(Accessed: 4 March 2025)
-
-[2] Davidson, S. About Grasshopper, Grasshopper. Available at: https://www.grasshopper3d.com/ (Accessed: 14 March 2025)
-
-[3] Weymouth, G., NumericalShipHydro repository, Available at: https://github.com/weymouth/NumericalShipHydro/tree/main//wigley.jl
-(Accessed: 4 March 2025)
-
-"""
-
-# ╔═╡ e315acb0-f0a0-4a2d-adc3-c510e0f46997
-
-# ╔═╡ 2bc4a9ed-2e7a-4eb9-8e1d-37939b665753
-using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, Plots, PlotlyBase,PlotlyKaleido, PlutoUI
-
-# ╔═╡ 9998b3e0-a799-42a5-889a-91908d1268dd
-begin
-plotly()
-p = plot(
-Plots.contourf(-2:0.1:2,-2:0.1:2, (x,y)->2ζ(x,y,qᵈ, pᵈ ;psᵈ...),
-	c=:balance, aspect_ratio=:equal),
-Plots.contourf(-2:0.1:2,-2:0.1:2, (x,y)->2ζ(x,y,qʰ,pʰ ;psʰ...),
-	c=:balance, aspect_ratio=:equal),
-
-layout=(1, 2), size=(600,300))
-
-end
-
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 NeumannKelvin = "7f078b06-e5c4-4cf8-bb56-b92882a0ad03"
 PlotlyBase = "a03496cd-edff-5a9b-9e67-9cda94a718b5"
 PlotlyKaleido = "f2990250-8cf9-495f-b13a-cce12b45703c"
@@ -956,7 +927,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.3"
 manifest_format = "2.0"
-project_hash = "42535031623bae8e671c6d47bb9b952014445cb0"
+project_hash = "67698398d18742366ad0ab53c1e6fa1475bdeb2f"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -2550,11 +2521,11 @@ version = "1.4.1+2"
 """
 
 # ╔═╡ Cell order:
-# ╠═fa570bdd-3772-4750-980d-d75cf268ffcf
-# ╠═2adecdf9-45d8-4c18-8227-fb0a554ea3ca
-# ╠═5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
+# ╟─fa570bdd-3772-4750-980d-d75cf268ffcf
+# ╟─2ba35c63-ea02-4f9e-860a-6e561aef1749
+# ╟─5308c0dd-3d0a-44db-9f6b-71b9e9587dfe
 # ╟─fc46cecf-68dc-4f10-aad8-2ad952133e02
-# ╠═998e97f5-fc3d-4fc5-8400-fa6f3a42f050
+# ╟─998e97f5-fc3d-4fc5-8400-fa6f3a42f050
 # ╟─091882c9-eae3-41aa-b8eb-fb907f5c0860
 # ╟─6af1e9d6-07f6-4c40-a277-ab6421d669ae
 # ╟─694c01ed-ca88-4bc4-8f97-541be437b524
@@ -2579,8 +2550,6 @@ version = "1.4.1+2"
 # ╠═277b39c7-d1a6-44dc-ab94-0df434f45ebc
 # ╠═e0563b74-fc82-417c-84e9-dac981767d12
 # ╠═9998b3e0-a799-42a5-889a-91908d1268dd
-# ╠═744044c4-0ca8-400c-b049-71e16ef052d9
-# ╠═9fef423f-6f85-48ab-86fa-7687af6ce184
 # ╟─859fdcec-a811-44c7-84cc-1a6166332cf1
 # ╠═e2642f16-d6e9-4d5f-8873-887d733a4013
 # ╠═05347ca0-89b9-4f40-8c97-091b07c0cddf
@@ -2600,11 +2569,9 @@ version = "1.4.1+2"
 # ╟─5e4d5334-46b2-4935-8f55-27b06a6d1cc5
 # ╟─8a8e28a6-0b5a-49cf-9035-97c9bb59214a
 # ╠═beb1d70b-d5eb-4f0e-9c40-3c9abbcf63b6
-# ╟─b40cf08b-81ef-4055-9cdc-e7ef647a4830
+# ╠═b40cf08b-81ef-4055-9cdc-e7ef647a4830
 # ╟─27198c30-f4ae-45b5-a874-c7a03959477a
 # ╟─4d344c68-f99a-4df5-be6f-cdf4cff29731
-# ╠═c2437329-a343-4909-af0a-55820fcce5b3
-# ╟─1d56fa89-f345-4502-b7da-3128b62384de
 # ╟─c2437329-a343-4909-af0a-55820fcce5b3
 # ╟─fcd9dd5a-1d3a-4255-94d5-ac2d9f90a4d1
 # ╠═e77289b9-b7d6-4a20-9b09-777ee67f4a1a
