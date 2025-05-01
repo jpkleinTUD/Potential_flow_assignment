@@ -4,24 +4,12 @@
 using Markdown
 using InteractiveUtils
 
-# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
-macro bind(def, element)
-    #! format: off
-    quote
-        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
-        local el = $(esc(element))
-        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
-        el
-    end
-    #! format: on
-end
-
 # ╔═╡ 2bc4a9ed-2e7a-4eb9-8e1d-37939b665753
 using NeumannKelvin, JSON, StaticArrays, LinearAlgebra, Plots, PlotlyBase,PlotlyKaleido, PlutoUI
 
 # ╔═╡ 480da64b-20da-4baa-b40a-4442a689f22a
 begin 
-	using NeumannKelvin:kelvin,wavelike,nearfield
+	using NeumannKelvin:kelvin,wavelike,nearfield,∫G
 	# From wigley notebook
 	reflect(x::SVector;flip=SA[1,-1,1]) = x.*flip
 	reflect(p::NamedTuple;flip=SA[1,-1,1]) = (x=reflect(p.x;flip), 
@@ -341,13 +329,14 @@ end
 function importMesh(filename::String);
 	import_data:: Dict{String, Any} = JSON.parsefile(filename);
 	toArray(str:: String) = parse.(Float64, split(strip(str, ['{', '}']), ","));
+	
 	vertices = [toArray(v) for v in import_data["verts"]];
 	normals = [toArray(f) for f in import_data["normals"]];
 	faces = [parse.(Int64, split(strip(f, ['{', '}', 'Q']), ";")) for f in import_data["faces"] if !occursin("T", f)];
 
     face_count = length(faces);
     println("Number of faces: $(face_count)");
-    if face_count > 10000 # Protecting ourselves from crashing (again)
+    if face_count > 10000 # Protecting ourselves from crashing
         println("Too many faces ($(face_count) > 10000), skipping import");
         return nothing, nothing, 0.0, nothing;
     end
@@ -429,79 +418,166 @@ The target mesh size is 250 panels.
 ## Visual inspection of mesh
 Prior to exporting from Rhino, the mesh is visually inspected to check there are no holes, and the face normals face the correct direction.
 
-![Mesh normals]()
+![Mesh normals](https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/refs/heads/main/Images/normals_check.jpg)
+
+As can be seen, all face normals face outwards, prior to exporting.
 
 
 ### Importing panels
+Now the panels can be imported. The full hull and half hulls are both imported with the importMesh function.
 """
 
 # ╔═╡ 3006e2d4-c8b9-48a3-9857-5ab15b59238e
-pᵈ, sᵈ, lᵈ, hᵈₘ = importMesh(joinpath(@__DIR__, "data", "PS_hull_0501_11-04_double_base.json"));
+pᶠ, sᶠ, lᶠ, hᶠₘ = importMesh(joinpath(@__DIR__, "data", "PS_hull_0501_11-04_double_base.json"));
 
 # ╔═╡ 2860ce20-e932-4205-8219-492696f4106c
 pʰ, sʰ, lʰ, hʰₘ = importMesh(joinpath(@__DIR__, "data", "PS_hull_0501_11-04_half_base.json"));
 
 # ╔═╡ a0c223be-1c3e-4fc2-aa5b-e6b6e077eb40
 md"""
-Plot panels scatterplot? For performance this is optional, and only 1 every 5 panels is plotted.
-
-$(@bind plot_panels CheckBox(default=false))
+To check the import has gone well, we make a plot of the panels. All waterline panels are marked.
 """
 
 # ╔═╡ b2203672-3079-49ec-a7f4-e09804136b86
 begin
-	if plot_panels
-		plot(Plots.scatter3d(
-			eachrow(stack(pᵈ.x))...,label=nothing,
-			marker_z=@.(pᵈ.wl),
-			c=palette([:grey,:green], 2),
-			title = "PS hull with waterline panels marked", aspect_ratio=:equal),
-			Plots.scatter3d(
-			eachrow(stack(pʰ.x))...,label=nothing,
-			marker_z=@.(pʰ.wl),
-			c=palette([:grey,:green], 2),
-			title = "PS demi-hull with waterline panels marked", aspect_ratio=:equal),
-			layout=(1, 2)
-		)
-	end
+	plot(Plots.scatter3d(
+		eachrow(stack(pᶠ.x))...,label=nothing,
+		marker_z=@.(pᶠ.wl),
+		c=palette([:grey,:green], 2),
+		title = "PS hull with waterline panels marked", aspect_ratio=:equal),
+		Plots.scatter3d(
+		eachrow(stack(pʰ.x))...,label=nothing,
+		marker_z=@.(pʰ.wl),
+		c=palette([:grey,:green], 2),
+		title = "PS demi-hull with waterline panels marked", aspect_ratio=:equal),
+		layout=(1, 2)
+	)
 end
+
+# ╔═╡ c24d5c0a-1599-478d-8ef8-92ae51501004
+md"""
+The plot shows the meshes have been imported correctly. Just the top row of panels has been marked as waterline panels. Note, these are not all physically located at the same height. This is due to the fact that the panels have differing sizes, as such the centrepoints of some panels are lower down than others.
+
+A second check we can do is to calculate the surface area of the panels, and compare to the original surface area from Rhino
+"""
+
+# ╔═╡ dc84804e-cb0b-4f91-b3bd-d5315953087b
+begin
+	total_area_full = 0;
+	for panel in pᶠ
+		total_area_full += panel.dA;
+	end
+	print("Total Area for full hull: $total_area_full")
+end
+
+# ╔═╡ fad619d4-5e28-4f5e-8b55-a3a78c445bf2
+begin
+	total_area_half = 0;
+	for panel in pʰ
+		total_area_half += panel.dA;
+	end
+	print("Total Area for half hull: $total_area_half")
+end
+
+# ╔═╡ 91bc2f70-0dbb-4b36-9a75-fcecfb9dab38
+md""" We check whether the half hull's area is half that of the full hull"""
+
+# ╔═╡ df99046e-5832-4561-ba15-9b02534af67d
+print("Double half hull area: $(total_area_half * 2)")
+
+# ╔═╡ 8870b067-b55f-4d49-af9b-2b719453b35e
+print("Difference between full and half areas: $(total_area_half * 2 - total_area_full)")
+
+# ╔═╡ 47997fac-65fa-4d03-abdc-e48c23d3941b
+md""" Considering the difference between the two values is in the order of magnitude as the machine's precision, this difference is acceptable 
+
+The area calculated by Rhino is 1.755521 $m^2$.
+
+"""
+
+# ╔═╡ aacb6edc-c61d-470b-8eab-5c2bc0aa30b5
+print("Percentage difference in area: $((1.755521 - total_area_full)/1.755521 * 100) %")
+
+# ╔═╡ bafaf95a-3f34-4018-9467-5b39fc408cf5
+md""" This difference in area is likely due to the fact that the ```importMesh``` function discards any triangular meshes, as well as small holes in the geometry.
+
+This is a very small difference however, and is likely negligable.
+"""
 
 # ╔═╡ 8546b716-93fc-4372-81be-f72566f8ad9d
 md"""
 ### Solving Sources
-Using the ```solve_sources``` function the flow around the two hulls can be modelled. The length scaled froude number $$Fn_l$$ is used and set at 0.2.
+Using the ```solve_sources``` function the flow around the two hulls can be modelled. The length scaled froude number $$Fn_l$$ is used and set at 0.1.
+
+0.1 is used, as this corresponds to the full scale Pioneering Spirit sailing ahead at 12 knots. While the geometry does not match, this will mean the flow will be more comparable.
 """
 
 # ╔═╡ 277b39c7-d1a6-44dc-ab94-0df434f45ebc
-qᵈ, psᵈ, Aᵈ = solve_sources(pᵈ; Fn=0.2);
+qᶠ, psᶠ, Aᶠ = solve_sources(pᶠ; Fn=0.1);
 
 # ╔═╡ e0563b74-fc82-417c-84e9-dac981767d12
-qʰ, psʰ, Aʰ = solve_sources(pʰ; demi=true, Fn=0.2);
+qʰ, psʰ, Aʰ = solve_sources(pʰ; demi=true, Fn=0.1);
+
+# ╔═╡ 9998b3e0-a799-42a5-889a-91908d1268dd
+begin
+plotly()
+
+# First subplot
+p1 = plot(
+    contourf(-2:0.1:2, -2:0.1:2, (x,y) -> 2ζ(x,y,qᶠ,pᶠ; psᶠ...), 
+        c=:balance, aspect_ratio=:equal),
+)
+plot!(p1, sᶠ, c=:black, legend=nothing)
+
+# Second subplot
+p2 = plot(
+    contourf(-2:0.1:2, -2:0.1:2, (x,y) -> 2ζ(x,y,qʰ,pʰ; psʰ...), 
+        c=:balance, aspect_ratio=:equal),
+)
+plot!(p2, sʰ, c=:black, legend=nothing)
+
+# Combine the subplots
+p = plot(p1, p2, layout=(1,2), size=(600,300))
+
+end
 
 # ╔═╡ 859fdcec-a811-44c7-84cc-1a6166332cf1
+
 md"""
+The propsed method succeeds at creating very similar free surface elevation patterns in the wake of the model. The wave elevations in the wake are very high however. The authors of this report hypothesize this could be due the the fact that potential flow does not consider any viscous effects, and as such all the waves from each potential are simply superimposed. Considering the flat nature of the stern, there are a lot of waves superimposing, thus creating the unrealistically large wake. 
+
 ### Comparing the half and full hull
 
-The propsed method succeeds at creating very similar free surface elevation patterns in the wake of the model. There are however significant differences in the added mass of the two models and the wave making resistance.
+The half and full hull can be compared to eachother using added mass and wave making resistance. For the added mass, the double body approach will be used with a normal (non-free surface) potential. The full hull will have the panels reflected, while the demi-hull will have the potential reflected twice. 
 """
 
 # ╔═╡ e2642f16-d6e9-4d5f-8873-887d733a4013
-added_mass(pᵈ; psᵈ...)
+begin
+	double_panels = vcat(pᶠ,reflect.(pᶠ,flip=SA[1,1,-1]))
+	added_mass(double_panels; ϕ=∫G)
+end
 
 # ╔═╡ 05347ca0-89b9-4f40-8c97-091b07c0cddf
-added_mass(pʰ; psʰ...)
+begin
+	∫G_full(x, p) = ∫G(x, p) + ∫G(x, reflect(p;flip=SA[1, -1, 1]))
+	∫G_double(x, p) = ∫G_full(x, p) + ∫G_full(x, reflect(p;flip=SA[1, 1, -1]))
+	added_mass(pʰ; ϕ=∫G_double) * 4
+end
+
+# ╔═╡ 754d18b0-09ba-4588-8755-9a0b851aa6d0
+md""" After correcting the added mass for the half hull with a factor of 4, they match! Now the hull's resistance can be checked."""
 
 # ╔═╡ 229c3961-a2b8-43ea-ab5a-2574f9c1a809
 begin
-	Cwᵈ = steady_force(qᵈ, pᵈ; psᵈ...)[1]
+	Cwᶠ = steady_force(qᶠ, pᶠ; psᶠ...)[1]
 	Cwʰ = steady_force(qʰ, pʰ; psʰ...)[1]
-	println("Cw full hull: $(Cwᵈ). Half hull: $(Cwʰ)")
-	println("Difference: $(Cwᵈ - Cwʰ)")
+	println("Cw full hull: $(Cwᶠ). Half hull: $(2 * Cwʰ)")
+	println("Difference: $(Cwᶠ - 2 * Cwʰ)")
 end
 
 # ╔═╡ f9c1d5fb-bf0c-4062-ba46-f6855a6f1961
 md"""
-Both the added mass and the wave making resistance significantly differ between the full and the half hull. The cause of this difference is as of the time of writing still unknown. As such the answer to the sub question "Can a demi-hull be used to improve processing?" is currently that it not possible, as the full and demi-hull significantly differ.
+Both the added mass and the wave making resistance match between the full and the demi hull. This means that the grasshopper method creates models that can be used properly with reflected potentials. For the rest of this study, half models will be used to decrease computational times.
 """
 
 # ╔═╡ 9fef423f-6f85-48ab-86fa-7687af6ce184
@@ -758,26 +834,17 @@ The plot above depicts the wave pattern caused by the slotted Wigley hull sailin
 2. The model contains 90-degree angles in various places. These angles could lead to singularities in the potential, resulting in unrealistic results. This source of error could be validated, and potentially mitigated, by creating a model with curved edges rather than 90-degree angles. Due to time constraints, this validation is not performed in this study.
 
 ##### Human error #####
-It is possible that there is an error in the geometry definition, leading to an incorrect solution. This can be checked by comparing the solution of the slotted Wigley hull with the solution for the NURBS output.
+It is possible that there is an error in the geometry definition, leading to an incorrect solution. This can be checked by comparing the solution of the slotted Wigley hull with the solution for the Rhino output. Considering both models have this unrealistic wave height, this is not likely to be the cause.
 """
 
 # ╔═╡ 8a8e28a6-0b5a-49cf-9035-97c9bb59214a
 md"""
 ### Grid convergence
 
-A grid convergence study has been performed to check whether the deviating added mass and wavemaking resistance between the full and demi-hull is due to truncation error resulting in the panel size. 
-
-This code has been disabled, as when it was run during the course of the study, it took over an hour to run to completion. To save the time during review, this is the resultant plot:
-![](https://raw.githubusercontent.com/jpkleinTUD/Potential_flow_assignment/1065fb1596227773dda98867b6493aa483355654/Images/grid_convergence.svg)
-
-As can be seen in the plot, the wave making resistance does not converge, in neither the full or the half model. This indicates that there is some issue present in the proposed method. Furthermore, there is a significant difference in the full and half model resistances. 
-
-The cause of the error and lack of convergence is unknown at the time of writing. 
+A grid convergence study has been performed to check whether the deviating added mass and wavemaking resistance between the full and demi-hull is due to truncation error resulting in the panel size. Three panel sizes are used with a target panel sizes of 250, 500 and 1000.
 """
 
 # ╔═╡ beb1d70b-d5eb-4f0e-9c40-3c9abbcf63b6
-# ╠═╡ disabled = true
-#=╠═╡
 begin
 	data_dir = joinpath(@__DIR__, "data", "grid_convergence");
 	files = readdir(data_dir);
@@ -792,13 +859,39 @@ begin
 	    panels, _, _, h_mean = importMesh(joinpath(data_dir, file));
 		if panels != nothing
 		    q, ps, A = solve_sources(panels; demi=demi, verbose=false);
-			Cw = steady_force(q, panels; ps)[1]
+			Cw = steady_force(q, panels; ps...)[1]
 			demi || (resistances_full[length(panels)] = (h_mean, Cw))
-			demi && (resistances_half[length(panels)] = (h_mean, Cw))
+			demi && (resistances_half[length(panels)] = (h_mean, Cw * 2))
 		end
 	end
 end
-  ╠═╡ =#
+
+# ╔═╡ b40cf08b-81ef-4055-9cdc-e7ef647a4830
+begin
+    # Sort the data by number of panels
+    sorted_half = sort(collect(filter(p -> p.first != 0, resistances_half)))
+    
+    panel_counts_half = first.(sorted_half)
+    h_mean_half = [p[2][1] for p in sorted_half]
+    Cw_half = [p[2][2] for p in sorted_half]
+    
+    # Create main plot with panel counts as x-axis
+    p_gc = plot(
+        panel_counts_half, Cw_half,
+        marker=:circle,
+        linestyle=:solid,
+        linewidth=2,
+        markersize=6,
+        color=:blue,
+        xlabel="Number of panels",
+        ylabel="Wave resistance coefficient (Cw)",
+        title="Grid Convergence Analysis",
+    )
+
+end
+
+# ╔═╡ cc5a88ca-b861-4c84-b6dd-0f658b4ed9e2
+md""" The wave making resistance of the hull appears to converge as the number of panels increases.  There is no oscillation present in the convergence of the resistance."""
 
 # ╔═╡ 27198c30-f4ae-45b5-a874-c7a03959477a
 nothing
@@ -816,9 +909,8 @@ First, the required workflow to retrieve a hull description usable with the Neum
 
 After that, the wave pattern induced by the hull shape has been analyzed using the NeumannKelvin package. This wave pattern was then compared to the wave pattern induced by a Wigley hull that was modified to resemble the Grasshopper input hull. While the absolute values of the wave patterns display unphysical behavior, their shapes resemble both each other and a wave pattern that is intuitively expected for the hull shapes. Therefore, it has been concluded that, while this study was not able to accurately define the wave pattern induced by a complex hull shape, it is considered possible with the employed methodology.
 
-Additionally, the use of a demi-hull to improve processing ability has been studied. Since neither the model for the demi-hull nor the full model displayed converging behavior, the answer to this subquestion remains inconclusive.
+Additionally, the use of a demi-hull to improve processing ability has been studied. It can be concluded that this method of creating panels does work with the demi-hull approach, with identical result compared to the full hull model
 
-Finally, it has been concluded that the study above has not been able to compute valid results. However, given more time, the methodology outlined above is considered promising in the field of complex potential flow modeling.
 """
 
 # ╔═╡ fcd9dd5a-1d3a-4255-94d5-ac2d9f90a4d1
@@ -836,78 +928,6 @@ md"""
 (Accessed: 4 March 2025)
 
 """
-
-# ╔═╡ 9998b3e0-a799-42a5-889a-91908d1268dd
-#=╠═╡
-begin
-plotly()
-p = plot(
-Plots.contourf(-2:0.1:2,-2:0.1:2, (x,y)->2ζ(x,y,qᵈ, pᵈ ;psᵈ...),
-	c=:balance, aspect_ratio=:equal),
-Plots.contourf(-2:0.1:2,-2:0.1:2, (x,y)->2ζ(x,y,qʰ,pʰ ;psʰ...),
-	c=:balance, aspect_ratio=:equal),
-
-layout=(1, 2), size=(600,300))
-
-end
-  ╠═╡ =#
-
-# ╔═╡ b40cf08b-81ef-4055-9cdc-e7ef647a4830
-# ╠═╡ disabled = true
-#=╠═╡
-begin
-    # Sort the data by number of panels
-    sorted_full = sort(collect(filter(p -> p.first != 0, resistances_full)))
-    sorted_half = sort(collect(filter(p -> p.first != 0, resistances_half)))
-    
-    # Extract panel counts, mean panel sizes, and resistance coefficients
-    panel_counts_full = first.(sorted_full)
-    h_mean_full = [p[2][1] for p in sorted_full]
-    Cw_full = [p[2][2] for p in sorted_full]
-    
-    panel_counts_half = first.(sorted_half)
-    h_mean_half = [p[2][1] for p in sorted_half]
-    Cw_half = [p[2][2] for p in sorted_half]
-    
-    # Create main plot with panel counts as x-axis
-    p = plot(
-        panel_counts_full, Cw_full, 
-        label="Full hull model", 
-        marker=:circle,
-        linestyle=:solid,
-        linewidth=2,
-        markersize=6,
-        color=:blue,
-        xlabel="Number of panels (Full ship equivalent)",
-        ylabel="Wave resistance coefficient (Cw)",
-        title="Grid Convergence Analysis",
-        legend=:topright
-    )
-    
-    plot!(
-        panel_counts_half .* 2, Cw_half,
-        label="Half hull model",
-        marker=:square,
-        linestyle=:dash,
-        linewidth=2,
-        markersize=6,
-        color=:red
-    )
-    
-    # Create a second plot with h_mean as x-axis (but will be used only for twinx)
-    p2 = plot(
-        h_mean_full, Cw_full,
-        xlabel="Mean panel size (h_mean)",
-        grid=false,
-        legend=false,
-        ticks=nothing,
-        showaxis=false
-    )
-    
-    # Display with both scales
-    plot(p, xticks=:native)
-end
-  ╠═╡ =#
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -2537,32 +2557,42 @@ version = "1.4.1+2"
 # ╟─fc46cecf-68dc-4f10-aad8-2ad952133e02
 # ╟─998e97f5-fc3d-4fc5-8400-fa6f3a42f050
 # ╟─091882c9-eae3-41aa-b8eb-fb907f5c0860
-# ╠═6af1e9d6-07f6-4c40-a277-ab6421d669ae
+# ╟─6af1e9d6-07f6-4c40-a277-ab6421d669ae
 # ╟─694c01ed-ca88-4bc4-8f97-541be437b524
 # ╠═2bc4a9ed-2e7a-4eb9-8e1d-37939b665753
 # ╟─c7786892-73cf-4e23-bfe6-339feae6f4de
 # ╠═202dea43-7c21-4c75-b3ae-6e351a384bb7
 # ╟─2071ec6e-d91b-4760-a0e1-3148e1350896
 # ╠═7812bbc4-a0a9-42a0-a0ce-9da86ad380b7
-# ╠═e717c9c8-dae4-48cf-ad4d-d50d94652a33
+# ╟─e717c9c8-dae4-48cf-ad4d-d50d94652a33
 # ╠═cb4c1429-bf61-4cb0-8c4a-11433073d8a9
 # ╟─e4538923-8dde-46b3-8931-9e8c63acffff
 # ╠═480da64b-20da-4baa-b40a-4442a689f22a
 # ╟─cc268f85-1c3d-4977-9c86-0d7de56f6060
 # ╠═cbe65c11-2ee2-4439-8d47-efa8fa9eccdc
 # ╟─223f5aa4-fa41-4414-94b3-6b125e9091e0
-# ╠═7e195849-db71-401b-8c3c-68c712135390
+# ╟─7e195849-db71-401b-8c3c-68c712135390
 # ╠═3006e2d4-c8b9-48a3-9857-5ab15b59238e
 # ╠═2860ce20-e932-4205-8219-492696f4106c
 # ╟─a0c223be-1c3e-4fc2-aa5b-e6b6e077eb40
 # ╟─b2203672-3079-49ec-a7f4-e09804136b86
+# ╟─c24d5c0a-1599-478d-8ef8-92ae51501004
+# ╟─dc84804e-cb0b-4f91-b3bd-d5315953087b
+# ╟─fad619d4-5e28-4f5e-8b55-a3a78c445bf2
+# ╟─91bc2f70-0dbb-4b36-9a75-fcecfb9dab38
+# ╟─df99046e-5832-4561-ba15-9b02534af67d
+# ╟─8870b067-b55f-4d49-af9b-2b719453b35e
+# ╟─47997fac-65fa-4d03-abdc-e48c23d3941b
+# ╟─aacb6edc-c61d-470b-8eab-5c2bc0aa30b5
+# ╟─bafaf95a-3f34-4018-9467-5b39fc408cf5
 # ╟─8546b716-93fc-4372-81be-f72566f8ad9d
 # ╠═277b39c7-d1a6-44dc-ab94-0df434f45ebc
 # ╠═e0563b74-fc82-417c-84e9-dac981767d12
-# ╠═9998b3e0-a799-42a5-889a-91908d1268dd
+# ╟─9998b3e0-a799-42a5-889a-91908d1268dd
 # ╟─859fdcec-a811-44c7-84cc-1a6166332cf1
 # ╠═e2642f16-d6e9-4d5f-8873-887d733a4013
 # ╠═05347ca0-89b9-4f40-8c97-091b07c0cddf
+# ╟─754d18b0-09ba-4588-8755-9a0b851aa6d0
 # ╠═229c3961-a2b8-43ea-ab5a-2574f9c1a809
 # ╟─f9c1d5fb-bf0c-4062-ba46-f6855a6f1961
 # ╟─9fef423f-6f85-48ab-86fa-7687af6ce184
@@ -2571,7 +2601,7 @@ version = "1.4.1+2"
 # ╟─9a2dc360-058b-4ba9-a477-bad65e2d2dae
 # ╟─1c89e4be-6cb6-4c0b-a3b4-b48e07617470
 # ╟─e924cf54-c392-4728-bc0f-89b3722f9b5a
-# ╟─461ee2cd-e445-4503-9cc2-0fa43d874464
+# ╠═461ee2cd-e445-4503-9cc2-0fa43d874464
 # ╟─68af513d-c457-49f8-ba7c-d6ca7c142975
 # ╠═f16e3fb3-7316-4a6d-a35d-7751fed391a7
 # ╟─08674063-c98a-403e-bf93-354da6e26a34
@@ -2579,7 +2609,8 @@ version = "1.4.1+2"
 # ╟─5e4d5334-46b2-4935-8f55-27b06a6d1cc5
 # ╟─8a8e28a6-0b5a-49cf-9035-97c9bb59214a
 # ╠═beb1d70b-d5eb-4f0e-9c40-3c9abbcf63b6
-# ╠═b40cf08b-81ef-4055-9cdc-e7ef647a4830
+# ╟─b40cf08b-81ef-4055-9cdc-e7ef647a4830
+# ╟─cc5a88ca-b861-4c84-b6dd-0f658b4ed9e2
 # ╟─27198c30-f4ae-45b5-a874-c7a03959477a
 # ╟─4d344c68-f99a-4df5-be6f-cdf4cff29731
 # ╟─c2437329-a343-4909-af0a-55820fcce5b3
