@@ -384,7 +384,7 @@ function solve_sources(panels; demi=false, Fn=0.2, verbose=false)
 	if demi
 		ps = (ϕ=∫surface_S₂,Fn=Fn)
 	else
-		ps = (ϕ=∫surface,Fn=Fn)# NamedTuple of keyword-arguments
+		ps = (ϕ=∫surface,Fn=Fn)
 	end
 	A = influence(panels;ps...)
 	
@@ -405,7 +405,7 @@ Using these functions the second sub-question is answered: "How can the hull be 
 
 # ╔═╡ 7e195849-db71-401b-8c3c-68c712135390
 md"""
-## Importing a custom mesh
+# Custom mesh example
 
 With all the necessary functions defined, models created with the Grasshopper tool can now be imported. As a demonstration of the method two hull forms will be imported and solved for, one a full hull and the other a demi-hull.
 
@@ -424,14 +424,22 @@ The size of the models is 1x1m and is they are made with the following parameter
 
 The radii are defined as percentages of the bow width (Top radius) and draught (Side and bilge radius)
 
+The target mesh size is 250 panels.
+
+## Visual inspection of mesh
+Prior to exporting from Rhino, the mesh is visually inspected to check there are no holes, and the face normals face the correct direction.
+
+![Mesh normals]()
+
+
 ### Importing panels
 """
 
 # ╔═╡ 3006e2d4-c8b9-48a3-9857-5ab15b59238e
-pᵈ, sᵈ, lᵈ, hᵈₘ = importMesh(joinpath(@__DIR__, "data", "small_ps", "PS_hull_0312_21-05_double_small_fine.json"));
+pᵈ, sᵈ, lᵈ, hᵈₘ = importMesh(joinpath(@__DIR__, "data", "PS_hull_0501_11-04_double_base.json"));
 
 # ╔═╡ 2860ce20-e932-4205-8219-492696f4106c
-pʰ, sʰ, lʰ, hʰₘ = importMesh(joinpath(@__DIR__, "data", "small_ps", "PS_hull_0312_22-18_half_small_fine.json"));
+pʰ, sʰ, lʰ, hʰₘ = importMesh(joinpath(@__DIR__, "data", "PS_hull_0501_11-04_half_base.json"));
 
 # ╔═╡ a0c223be-1c3e-4fc2-aa5b-e6b6e077eb40
 md"""
@@ -830,6 +838,7 @@ md"""
 """
 
 # ╔═╡ 9998b3e0-a799-42a5-889a-91908d1268dd
+#=╠═╡
 begin
 plotly()
 p = plot(
@@ -841,6 +850,7 @@ Plots.contourf(-2:0.1:2,-2:0.1:2, (x,y)->2ζ(x,y,qʰ,pʰ ;psʰ...),
 layout=(1, 2), size=(600,300))
 
 end
+  ╠═╡ =#
 
 # ╔═╡ b40cf08b-81ef-4055-9cdc-e7ef647a4830
 # ╠═╡ disabled = true
@@ -2527,7 +2537,7 @@ version = "1.4.1+2"
 # ╟─fc46cecf-68dc-4f10-aad8-2ad952133e02
 # ╟─998e97f5-fc3d-4fc5-8400-fa6f3a42f050
 # ╟─091882c9-eae3-41aa-b8eb-fb907f5c0860
-# ╟─6af1e9d6-07f6-4c40-a277-ab6421d669ae
+# ╠═6af1e9d6-07f6-4c40-a277-ab6421d669ae
 # ╟─694c01ed-ca88-4bc4-8f97-541be437b524
 # ╠═2bc4a9ed-2e7a-4eb9-8e1d-37939b665753
 # ╟─c7786892-73cf-4e23-bfe6-339feae6f4de
@@ -2541,7 +2551,7 @@ version = "1.4.1+2"
 # ╟─cc268f85-1c3d-4977-9c86-0d7de56f6060
 # ╠═cbe65c11-2ee2-4439-8d47-efa8fa9eccdc
 # ╟─223f5aa4-fa41-4414-94b3-6b125e9091e0
-# ╟─7e195849-db71-401b-8c3c-68c712135390
+# ╠═7e195849-db71-401b-8c3c-68c712135390
 # ╠═3006e2d4-c8b9-48a3-9857-5ab15b59238e
 # ╠═2860ce20-e932-4205-8219-492696f4106c
 # ╟─a0c223be-1c3e-4fc2-aa5b-e6b6e077eb40
