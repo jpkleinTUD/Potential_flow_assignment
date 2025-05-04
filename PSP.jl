@@ -657,7 +657,7 @@ end
 # ╔═╡ 9a2dc360-058b-4ba9-a477-bad65e2d2dae
 
 begin
-	Fnq = 0.2 	# Froude number 0.2 taken consistent across all models
+	Fnq = 0.1 	# Froude number 0.2 taken consistent across all models
 	
 	function ∫surface_jul(x,p;Fn,χ=true,dz=0)
 		(!χ || p.x[3]^2 > p.dA) && return ∫kelvin(x,p;Fn,dz) # no waterline
@@ -677,7 +677,7 @@ The plot below displays the flow of the double wigley hull compared to theat of 
 
 
 
-##### Wave height [m] at Fn = 0.2 for the single and the double wigley hull
+##### Wave height [m] at Fn = 0.1 for the single and the double wigley hull
 """
 
 # ╔═╡ e924cf54-c392-4728-bc0f-89b3722f9b5a
@@ -826,7 +826,7 @@ begin
 	ps_3 = (ϕ=∫surface_jul,Fn=Fnq)        # NamedTuple of keyword-arguments
 	q_3 = influence(hull_slot;ps_3...)\first.(hull_slot.n) # solve for densities
 	plotly()
-	Plots.contourf(-2:h:1,-1:h:1,(x,y)->ζ(x,y,q_3,hull_slot;ps_3...),
+	Plots.contourf(-2:1.5h:1,-1:1.5h:1,(x,y)->ζ(x,y,q_3,hull_slot;ps_3...),
 		c=:balance,aspect_ratio=:equal,clims=(-3,3));Plots.plot!(wigley_shape_l_1(h),c=:black,legend=nothing);Plots.plot!(	wigley_shape_r_1(h),c=:black,legend=nothing);Plots.plot!(	wigley_shape_l_2(h),c=:black,legend=nothing);Plots.plot!(	wigley_shape_r_2(h),c=:black,legend=nothing);Plots.plot!(Plots.Shape(x_coords, y_coords), aspect_ratio=:equal, lw=2, color=:black,title = "Wave height [m] at Froude number = $Fnq")
 end
 
@@ -2605,10 +2605,10 @@ version = "1.4.1+2"
 # ╟─3079d163-b5b0-4ad8-aaeb-0c32fe721f21
 # ╟─9a2dc360-058b-4ba9-a477-bad65e2d2dae
 # ╟─fe1264ee-a4ae-4f1b-9121-db6e968318b0
-# ╟─1c89e4be-6cb6-4c0b-a3b4-b48e07617470
+# ╠═1c89e4be-6cb6-4c0b-a3b4-b48e07617470
 # ╟─e924cf54-c392-4728-bc0f-89b3722f9b5a
 # ╟─68af513d-c457-49f8-ba7c-d6ca7c142975
-# ╠═f16e3fb3-7316-4a6d-a35d-7751fed391a7
+# ╟─f16e3fb3-7316-4a6d-a35d-7751fed391a7
 # ╟─08674063-c98a-403e-bf93-354da6e26a34
 # ╟─2652de72-75c0-4737-abea-e83c18ef73a8
 # ╟─5e4d5334-46b2-4935-8f55-27b06a6d1cc5
